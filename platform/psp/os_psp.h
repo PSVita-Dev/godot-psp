@@ -32,7 +32,9 @@
 #define OS_PSP_H
 
 #include "audio_driver_psp.h"
-#include "joypad_psp.h"
+#include "main/input_default.h"
+#include <pspctrl.h>
+// #include "joypad_psp.h"
 // #include "drivers/rtaudio/audio_driver_rtaudio.h"
 #include "drivers/unix/os_unix.h"
 #include "main/input_default.h"
