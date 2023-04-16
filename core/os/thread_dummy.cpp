@@ -29,7 +29,7 @@
 /*************************************************************************/
 
 #include "thread_dummy.h"
-
+#include <stdio.h>
 #include "memory.h"
 
 Thread *ThreadDummy::create(ThreadCreateCallback p_callback, void *p_user, const Thread::Settings &p_settings) {
@@ -41,6 +41,7 @@ void ThreadDummy::make_default() {
 };
 
 Mutex *MutexDummy::create(bool p_recursive) {
+	printf("p_recursive %d\n", p_recursive);
 	return memnew(MutexDummy);
 };
 

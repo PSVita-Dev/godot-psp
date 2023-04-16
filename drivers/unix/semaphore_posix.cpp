@@ -30,7 +30,7 @@
 
 #include "semaphore_posix.h"
 
-#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED)
+#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED) && !defined(PSP_ENABLED)
 
 #include "os/memory.h"
 #include <errno.h>

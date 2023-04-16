@@ -71,7 +71,7 @@ void AudioDriverDummy::thread_func(void *p_udata) {
 			ad->lock();
 
 			ad->audio_server_process(ad->buffer_size, ad->samples_in);
-
+			printf("progress\n");
 			ad->unlock();
 		};
 

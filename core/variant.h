@@ -183,7 +183,7 @@ public:
 	operator unsigned short() const;
 	operator signed char() const;
 	operator unsigned char() const;
-	//operator long unsigned int() const;
+// 	operator long unsigned int() const;
 	operator int64_t() const;
 	operator uint64_t() const;
 #ifdef NEED_LONG_INT
@@ -222,6 +222,7 @@ public:
 	operator DVector<uint8_t>() const;
 	operator DVector<int>() const;
 	operator DVector<real_t>() const;
+	operator DVector<long int>() const;
 	operator DVector<String>() const;
 	operator DVector<Vector3>() const;
 	operator DVector<Color>() const;
@@ -231,6 +232,7 @@ public:
 	operator Vector<Variant>() const;
 	operator Vector<uint8_t>() const;
 	operator Vector<int>() const;
+	operator Vector<long int>() const;
 	operator Vector<real_t>() const;
 	operator Vector<String>() const;
 	operator Vector<Vector3>() const;
@@ -260,6 +262,7 @@ public:
 	Variant(unsigned char p_char);
 	Variant(int64_t p_char); // real one
 	Variant(uint64_t p_char);
+// 	Variant(uint32_t p_char);
 	Variant(float p_float);
 	Variant(double p_double);
 	Variant(const String &p_string);
@@ -288,6 +291,7 @@ public:
 	Variant(const DVector<Plane> &p_array); // helper
 	Variant(const DVector<uint8_t> &p_raw_array);
 	Variant(const DVector<int> &p_int_array);
+	Variant(const DVector<long int> &p_int_array);
 	Variant(const DVector<real_t> &p_real_array);
 	Variant(const DVector<String> &p_string_array);
 	Variant(const DVector<Vector3> &p_vector3_array);

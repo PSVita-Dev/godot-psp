@@ -1920,6 +1920,13 @@ Variant::operator DVector<int>() const {
 	else
 		return _convert_array_from_variant<DVector<int> >(*this);
 }
+Variant::operator DVector<long int>() const {
+
+	if (type == INT_ARRAY)
+		return *reinterpret_cast<const DVector<long int> *>(_data._mem);
+	else
+		return _convert_array_from_variant<DVector<long int> >(*this);
+}
 Variant::operator DVector<real_t>() const {
 
 	if (type == REAL_ARRAY)
@@ -2067,6 +2074,18 @@ Variant::operator Vector<int>() const {
 
 	DVector<int> from = operator DVector<int>();
 	Vector<int> to;
+	int len = from.size();
+	to.resize(len);
+	for (int i = 0; i < len; i++) {
+
+		to[i] = from[i];
+	}
+	return to;
+}
+Variant::operator Vector<long int>() const {
+
+	DVector<long int> from = operator DVector<long int>();
+	Vector<long int> to;
 	int len = from.size();
 	to.resize(len);
 	for (int i = 0; i < len; i++) {
@@ -2433,6 +2452,11 @@ Variant::Variant(const DVector<int> &p_int_array) {
 
 	type = INT_ARRAY;
 	memnew_placement(_data._mem, DVector<int>(p_int_array));
+}
+Variant::Variant(const DVector<long int> &p_int_array) {
+
+	type = INT_ARRAY;
+	memnew_placement(_data._mem, DVector<long int>(p_int_array));
 }
 Variant::Variant(const DVector<real_t> &p_real_array) {
 

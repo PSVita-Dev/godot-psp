@@ -32,7 +32,7 @@
 
 // Atomic functions, these are used for multithread safe reference counters!
 
-#ifdef NO_THREADS
+#ifdef PSP_ENABLED
 
 /* Bogus implementation unaware of multiprocessing */
 
@@ -109,25 +109,21 @@ static _ALWAYS_INLINE_ T _atomic_conditional_increment_impl(register T *pw) {
 
 template <class T>
 static _ALWAYS_INLINE_ T _atomic_decrement_impl(register T *pw) {
-
 	return __sync_sub_and_fetch(pw, 1);
 }
 
 template <class T>
 static _ALWAYS_INLINE_ T _atomic_increment_impl(register T *pw) {
-
 	return __sync_add_and_fetch(pw, 1);
 }
 
 template <class T>
 static _ALWAYS_INLINE_ T _atomic_sub_impl(register T *pw, register T val) {
-
 	return __sync_sub_and_fetch(pw, val);
 }
 
 template <class T>
 static _ALWAYS_INLINE_ T _atomic_add_impl(register T *pw, register T val) {
-
 	return __sync_add_and_fetch(pw, val);
 }
 

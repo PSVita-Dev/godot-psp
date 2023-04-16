@@ -35,7 +35,7 @@
 #include "os/memory.h"
 #include <stdio.h>
 
-#if defined(UNIX_ENABLED) || defined(LIBC_FILEIO_ENABLED)
+#if defined(UNIX_ENABLED) || defined(LIBC_FILEIO_ENABLED) || defined(PSP_ENABLED)
 
 /**
 	@author Juan Linietsky <reduzio@gmail.com>

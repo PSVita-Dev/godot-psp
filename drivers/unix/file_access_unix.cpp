@@ -30,14 +30,14 @@
 
 #include "file_access_unix.h"
 
-#if defined(UNIX_ENABLED) || defined(LIBC_FILEIO_ENABLED)
+#if defined(UNIX_ENABLED) || defined(LIBC_FILEIO_ENABLED) || defined(PSP_ENABLED)
 
 #include "core/os/os.h"
 #include "print_string.h"
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#ifndef ANDROID_ENABLED
+#ifndef PSP_ENABLED
 #include <sys/statvfs.h>
 #endif
 
