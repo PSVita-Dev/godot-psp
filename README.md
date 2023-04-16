@@ -1,5 +1,8 @@
 [![GODOT](/logo.png)](https://godotengine.org)
 
+# POC At the moment!
+## Build for psp: ```scons platform=psp target=release -j8```
+
 ## Godot Engine
 
 Homepage: https://godotengine.org
