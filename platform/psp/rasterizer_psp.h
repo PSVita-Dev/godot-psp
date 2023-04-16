@@ -339,12 +339,12 @@ class RasterizerPSP : public Rasterizer {
 
 	Error _surface_set_arrays(Surface *p_surface, uint8_t *p_mem,uint8_t *p_index_mem,const Array& p_arrays,bool p_main);
 
-	struct MultiMesh;
+struct MultiMesh;
 
 	struct MultiMeshSurface : public Geometry {
 
 		Surface *surface;
-		MultiMeshSurface() { type=GEOMETRY_MULTISURFACE; }
+		MultiMeshSurface() { type = GEOMETRY_MULTISURFACE; }
 	};
 
 	struct MultiMesh : public GeometryOwner {
@@ -353,6 +353,27 @@ class RasterizerPSP : public Rasterizer {
 
 			float matrix[16];
 			uint8_t color[4];
+			Element() {
+				matrix[0] = 1;
+				matrix[1] = 0;
+				matrix[2] = 0;
+				matrix[3] = 0;
+
+				matrix[4] = 0;
+				matrix[5] = 1;
+				matrix[6] = 0;
+				matrix[7] = 0;
+
+				matrix[8] = 0;
+				matrix[9] = 0;
+				matrix[10] = 1;
+				matrix[11] = 0;
+
+				matrix[12] = 0;
+				matrix[13] = 0;
+				matrix[14] = 0;
+				matrix[15] = 1;
+			};
 		};
 
 		AABB aabb;
@@ -363,15 +384,25 @@ class RasterizerPSP : public Rasterizer {
 		Vector<Element> elements;
 		Vector<MultiMeshSurface> cache_surfaces;
 		mutable uint64_t last_pass;
+		GLuint tex_id;
+		int tw;
+		int th;
 
-		MultiMesh() {
+		SelfList<MultiMesh> dirty_list;
 
-			last_pass=0;
+		MultiMesh() :
+				dirty_list(this) {
+
+			tw = 1;
+			th = 1;
+			tex_id = 0;
+			last_pass = 0;
 			visible = -1;
 		}
 	};
 
 	mutable RID_Owner<MultiMesh> multimesh_owner;
+	mutable SelfList<MultiMesh>::List _multimesh_dirty_list;
 
 
 	struct Immediate {
@@ -407,13 +438,86 @@ class RasterizerPSP : public Rasterizer {
 	mutable RID_Owner<ParticlesInstance> particles_instance_owner;
 	ParticleSystemDrawInfoSW particle_draw_info;
 
+
 	struct Skeleton {
 
-		Vector<Transform> bones;
+		struct Bone {
 
+			float mtx[4][4]; //used
+
+			Bone() {
+				for (int i = 0; i < 4; i++) {
+					for (int j = 0; j < 4; j++) {
+
+						mtx[i][j] = (i == j) ? 1 : 0;
+					}
+				}
+			}
+
+			_ALWAYS_INLINE_ void transform_add_mul3(const float *p_src, float *r_dst, float p_weight) const {
+
+				r_dst[0] += ((mtx[0][0] * p_src[0]) + (mtx[1][0] * p_src[1]) + (mtx[2][0] * p_src[2]) + mtx[3][0]) * p_weight;
+				r_dst[1] += ((mtx[0][1] * p_src[0]) + (mtx[1][1] * p_src[1]) + (mtx[2][1] * p_src[2]) + mtx[3][1]) * p_weight;
+				r_dst[2] += ((mtx[0][2] * p_src[0]) + (mtx[1][2] * p_src[1]) + (mtx[2][2] * p_src[2]) + mtx[3][2]) * p_weight;
+			}
+			_ALWAYS_INLINE_ void transform3_add_mul3(const float *p_src, float *r_dst, float p_weight) const {
+
+				r_dst[0] += ((mtx[0][0] * p_src[0]) + (mtx[1][0] * p_src[1]) + (mtx[2][0] * p_src[2])) * p_weight;
+				r_dst[1] += ((mtx[0][1] * p_src[0]) + (mtx[1][1] * p_src[1]) + (mtx[2][1] * p_src[2])) * p_weight;
+				r_dst[2] += ((mtx[0][2] * p_src[0]) + (mtx[1][2] * p_src[1]) + (mtx[2][2] * p_src[2])) * p_weight;
+			}
+
+			_ALWAYS_INLINE_ AABB transform_aabb(const AABB &p_aabb) const {
+
+				float vertices[8][3] = {
+					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z },
+					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z },
+					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z },
+					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z },
+					{ p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z },
+					{ p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z },
+					{ p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z },
+					{ p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z }
+				};
+
+				AABB ret;
+
+				for (int i = 0; i < 8; i++) {
+
+					Vector3 xv(
+
+							((mtx[0][0] * vertices[i][0]) + (mtx[1][0] * vertices[i][1]) + (mtx[2][0] * vertices[i][2]) + mtx[3][0]),
+							((mtx[0][1] * vertices[i][0]) + (mtx[1][1] * vertices[i][1]) + (mtx[2][1] * vertices[i][2]) + mtx[3][1]),
+							((mtx[0][2] * vertices[i][0]) + (mtx[1][2] * vertices[i][1]) + (mtx[2][2] * vertices[i][2]) + mtx[3][2]));
+
+					if (i == 0)
+						ret.pos = xv;
+					else
+						ret.expand_to(xv);
+				}
+
+				return ret;
+			}
+		};
+
+		GLuint tex_id;
+		float pixel_size; //for texture
+		Vector<Bone> bones;
+
+		SelfList<Skeleton> dirty_list;
+
+		Skeleton() :
+				dirty_list(this) {
+			tex_id = 0;
+			pixel_size = 1.0;
+		}
 	};
 
 	mutable RID_Owner<Skeleton> skeleton_owner;
+	mutable SelfList<Skeleton>::List _skeleton_dirty_list;
+
+	template <bool USE_NORMAL, bool USE_TANGENT, bool INPLACE>
+	void _skeleton_xform(const uint8_t *p_src_array, int p_src_stride, uint8_t *p_dst_array, int p_dst_stride, int p_elements, const uint8_t *p_src_bones, const uint8_t *p_src_weights, const Skeleton::Bone *p_bone_xforms);
 
 
 	struct Light {
@@ -553,6 +657,7 @@ class RasterizerPSP : public Rasterizer {
 	int light_instance_count;
 	int directional_light_count;
 	int last_light_id;
+	GLuint gui_quad_buffer;
 
 
 	struct RenderList {
@@ -820,7 +925,10 @@ class RasterizerPSP : public Rasterizer {
 		int vertex_count;
 		int object_count;
 		int mat_change_count;
+		int surface_count;
 		int shader_change_count;
+		int ci_draw_commands;
+		int draw_calls;
 
 	} _rinfo;
 
@@ -842,10 +950,14 @@ class RasterizerPSP : public Rasterizer {
 	double time_delta;
 	uint64_t frame;
 	uint64_t scene_pass;
+	bool draw_next_frame;
+	float time_scale;
+	double scaled_time;
 
 	//void _draw_primitive(int p_points, const Vector3 *p_vertices, const Vector3 *p_normals, const Color* p_colors, const Vector3 *p_uvs,const Plane *p_tangents=NULL,int p_instanced=1);
-	//void _draw_textured_quad(const Rect2& p_rect, const Rect2& p_src_region, const Size2& p_tex_size,bool p_h_flip=false, bool p_v_flip=false );
+	void _draw_textured_quad(const Rect2 &p_rect, const Rect2 &p_src_region, const Size2 &p_tex_size, bool p_h_flip = false, bool p_v_flip = false, bool p_transpose= false);
 	//void _draw_quad(const Rect2& p_rect);
+	void _draw_gui_primitive(int p_points, const Vector2 *p_vertices, const Color *p_colors, const Vector2 *p_uvs);
 
 public:
 
@@ -1168,7 +1280,7 @@ public:
 	/* CANVAS API */
 
 	virtual void canvas_begin();
-	virtual void canvas_disable_blending() { };
+	virtual void canvas_disable_blending();
 	virtual void canvas_set_opacity(float p_opacity);
 	virtual void canvas_set_blend_mode(VS::MaterialBlendMode p_mode);
 	virtual void canvas_begin_rect(const Matrix32& p_transform);

@@ -198,7 +198,90 @@ static void _draw_primitive(int p_points, const Vector3 *p_vertices, const Vecto
 	glDisableClientState(GL_NORMAL_ARRAY);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
+// 	_rinfo.ci_draw_commands++;
 };
+
+
+
+void RasterizerPSP::_draw_gui_primitive(int p_points, const Vector2 *p_vertices, const Color *p_colors, const Vector2 *p_uvs) {
+
+	GLenum type = prim_type[p_points - 1];
+
+	glBindBuffer(GL_ARRAY_BUFFER, gui_quad_buffer);
+	float b[32];
+	int ofs = 0;
+// 	glEnableVertexAttribArray(VS::ARRAY_VERTEX);
+// 	glVertexAttribPointer(VS::ARRAY_VERTEX, 2, GL_FLOAT, false, sizeof(float) * 2, ((float *)0) + ofs);
+// 	for (int i = 0; i < p_points; i++) {
+// 		b[ofs++] = p_vertices[i].x;
+// 		b[ofs++] = p_vertices[i].y;
+// 	}
+//
+// 	if (p_colors) {
+//
+// 		glEnableVertexAttribArray(VS::ARRAY_COLOR);
+// 		glVertexAttribPointer(VS::ARRAY_COLOR, 4, GL_FLOAT, false, sizeof(float) * 4, ((float *)0) + ofs);
+// 		for (int i = 0; i < p_points; i++) {
+// 			b[ofs++] = p_colors[i].r;
+// 			b[ofs++] = p_colors[i].g;
+// 			b[ofs++] = p_colors[i].b;
+// 			b[ofs++] = p_colors[i].a;
+// 		}
+//
+// 	} else {
+// 		glDisableVertexAttribArray(VS::ARRAY_COLOR);
+// 	}
+//
+// 	if (p_uvs) {
+//
+// 		glEnableVertexAttribArray(VS::ARRAY_TEX_UV);
+// 		glVertexAttribPointer(VS::ARRAY_TEX_UV, 2, GL_FLOAT, false, sizeof(float) * 2, ((float *)0) + ofs);
+// 		for (int i = 0; i < p_points; i++) {
+// 			b[ofs++] = p_uvs[i].x;
+// 			b[ofs++] = p_uvs[i].y;
+// 		}
+//
+// 	} else {
+// // 		glDisableVertexAttribArray(VS::ARRAY_TEX_UV);
+// 	}
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, (GLvoid*)p_vertices);
+/*
+	if (p_normals) {
+
+			glEnableClientState(GL_NORMAL_ARRAY);
+			glNormalPointer(GL_FLOAT, 0, (GLvoid*)p_normals);
+	};*/
+
+	if (p_colors) {
+			glEnableClientState(GL_COLOR_ARRAY);
+			glColorPointer(4,GL_FLOAT, 0, p_colors);
+	};
+
+	if (p_uvs) {
+// 			printf("uv\n");
+
+			//glClientActiveTexture(GL_TEXTURE0);
+			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+			glTexCoordPointer(3, GL_FLOAT, 0, p_uvs);
+	};
+// 	GLenum err = glGetError();
+// 	printf("error %d\n");
+
+// 	glDrawArrays( type, 0, p_points);
+
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_NORMAL_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
+	glBufferSubData(GL_ARRAY_BUFFER, 0, ofs * 4, &b[0]);
+	glDrawArrays(type, 0, p_points);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
 
 /* TEXTURE API */
 #define _EXT_COMPRESSED_RGB_PVRTC_4BPPV1_IMG                   0x8C00
@@ -2507,23 +2590,59 @@ int RasterizerPSP::skeleton_get_bone_count(RID p_skeleton) const {
 	ERR_FAIL_COND_V(!skeleton, -1);
 	return skeleton->bones.size();
 }
-void RasterizerPSP::skeleton_bone_set_transform(RID p_skeleton,int p_bone, const Transform& p_transform) {
+// void RasterizerPSP::skeleton_bone_set_transform(RID p_skeleton,int p_bone, const Transform& p_transform) {
 
-	Skeleton *skeleton = skeleton_owner.get( p_skeleton );
+void RasterizerPSP::skeleton_bone_set_transform(RID p_skeleton, int p_bone, const Transform &p_transform) {
+
+	Skeleton *skeleton = skeleton_owner.get(p_skeleton);
 	ERR_FAIL_COND(!skeleton);
-	ERR_FAIL_INDEX( p_bone, skeleton->bones.size() );
+	ERR_FAIL_INDEX(p_bone, skeleton->bones.size());
 
-	skeleton->bones[p_bone] = p_transform;
+	Skeleton::Bone &b = skeleton->bones[p_bone];
+
+	b.mtx[0][0] = p_transform.basis[0][0];
+	b.mtx[0][1] = p_transform.basis[1][0];
+	b.mtx[0][2] = p_transform.basis[2][0];
+	b.mtx[1][0] = p_transform.basis[0][1];
+	b.mtx[1][1] = p_transform.basis[1][1];
+	b.mtx[1][2] = p_transform.basis[2][1];
+	b.mtx[2][0] = p_transform.basis[0][2];
+	b.mtx[2][1] = p_transform.basis[1][2];
+	b.mtx[2][2] = p_transform.basis[2][2];
+	b.mtx[3][0] = p_transform.origin[0];
+	b.mtx[3][1] = p_transform.origin[1];
+	b.mtx[3][2] = p_transform.origin[2];
+
+	if (skeleton->tex_id) {
+		if (!skeleton->dirty_list.in_list()) {
+			_skeleton_dirty_list.add(&skeleton->dirty_list);
+		}
+	}
 }
 
-Transform RasterizerPSP::skeleton_bone_get_transform(RID p_skeleton,int p_bone) {
+Transform RasterizerPSP::skeleton_bone_get_transform(RID p_skeleton, int p_bone) {
 
-	Skeleton *skeleton = skeleton_owner.get( p_skeleton );
+	Skeleton *skeleton = skeleton_owner.get(p_skeleton);
 	ERR_FAIL_COND_V(!skeleton, Transform());
-	ERR_FAIL_INDEX_V( p_bone, skeleton->bones.size(), Transform() );
+	ERR_FAIL_INDEX_V(p_bone, skeleton->bones.size(), Transform());
 
-	// something
-	return skeleton->bones[p_bone];
+	const Skeleton::Bone &b = skeleton->bones[p_bone];
+
+	Transform t;
+	t.basis[0][0] = b.mtx[0][0];
+	t.basis[1][0] = b.mtx[0][1];
+	t.basis[2][0] = b.mtx[0][2];
+	t.basis[0][1] = b.mtx[1][0];
+	t.basis[1][1] = b.mtx[1][1];
+	t.basis[2][1] = b.mtx[1][2];
+	t.basis[0][2] = b.mtx[2][0];
+	t.basis[1][2] = b.mtx[2][1];
+	t.basis[2][2] = b.mtx[2][2];
+	t.origin[0] = b.mtx[3][0];
+	t.origin[1] = b.mtx[3][1];
+	t.origin[2] = b.mtx[3][2];
+
+	return t;
 }
 
 
@@ -2851,7 +2970,7 @@ bool RasterizerPSP::render_target_renedered_in_frame(RID p_render_target){
 
 void RasterizerPSP::begin_frame() {
 
-
+/*
 	window_size = Size2( OS::get_singleton()->get_video_mode().width, OS::get_singleton()->get_video_mode().height );
 	//print_line("begin frame - winsize: "+window_size);
 
@@ -2860,12 +2979,100 @@ void RasterizerPSP::begin_frame() {
 	time_delta=time-last_time;
 	last_time=time;
 	frame++;
-	clear_viewport(Color(1,0,0.5));
+	clear_viewport(Color(1,0,0.5));*/
 
-	_rinfo.vertex_count=0;
-	_rinfo.object_count=0;
-	_rinfo.mat_change_count=0;
-	_rinfo.shader_change_count=0;
+// 	_rinfo.vertex_count=0;
+// 	_rinfo.object_count=0;
+// 	_rinfo.mat_change_count=0;
+// 	_rinfo.shader_change_count=0;
+
+
+
+
+// 	_update_framebuffer();
+
+	glDepthFunc(GL_LEQUAL);
+	glFrontFace(GL_CW);
+
+	window_size = Size2(OS::get_singleton()->get_video_mode().width, OS::get_singleton()->get_video_mode().height);
+
+	double time = (OS::get_singleton()->get_ticks_usec() / 1000); // get msec
+	time /= 1000.0; // make secs
+	if (frame != 0) {
+		time_delta = time_scale * (time - last_time);
+	} else {
+		time_delta = 0.0f;
+	}
+	scaled_time += time_delta;
+	last_time = time;
+	frame++;
+
+	_rinfo.vertex_count = 0;
+	_rinfo.object_count = 0;
+	_rinfo.mat_change_count = 0;
+	_rinfo.shader_change_count = 0;
+	_rinfo.ci_draw_commands = 0;
+	_rinfo.surface_count = 0;
+	_rinfo.draw_calls = 0;
+
+	_update_fixed_materials();
+// 	while (_shader_dirty_list.first()) {
+
+// 		_update_shader(_shader_dirty_list.first()->self());
+// 	}
+
+	while (_skeleton_dirty_list.first()) {
+
+		Skeleton *s = _skeleton_dirty_list.first()->self();
+
+		float *sk_float = (float *)skinned_buffer;
+		for (int i = 0; i < s->bones.size(); i++) {
+
+			float *m = &sk_float[i * 12];
+			const Skeleton::Bone &b = s->bones[i];
+			m[0] = b.mtx[0][0];
+			m[1] = b.mtx[1][0];
+			m[2] = b.mtx[2][0];
+			m[3] = b.mtx[3][0];
+
+			m[4] = b.mtx[0][1];
+			m[5] = b.mtx[1][1];
+			m[6] = b.mtx[2][1];
+			m[7] = b.mtx[3][1];
+
+			m[8] = b.mtx[0][2];
+			m[9] = b.mtx[1][2];
+			m[10] = b.mtx[2][2];
+			m[11] = b.mtx[3][2];
+		}
+
+// 		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, s->tex_id);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, next_power_of_2(s->bones.size() * 3), 1, GL_RGBA, GL_FLOAT, sk_float);
+		_skeleton_dirty_list.remove(_skeleton_dirty_list.first());
+	}
+
+	while (_multimesh_dirty_list.first()) {
+
+		MultiMesh *s = _multimesh_dirty_list.first()->self();
+
+		float *sk_float = (float *)skinned_buffer;
+		for (int i = 0; i < s->elements.size(); i++) {
+
+			float *m = &sk_float[i * 16];
+			const float *im = s->elements[i].matrix;
+			for (int j = 0; j < 16; j++) {
+				m[j] = im[j];
+			}
+		}
+
+// 		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, s->tex_id);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, s->tw, s->th, GL_RGBA, GL_FLOAT, sk_float);
+		_multimesh_dirty_list.remove(_multimesh_dirty_list.first());
+	}
+
+	draw_next_frame = false;
 
 
 //	material_shader.set_uniform_default(MaterialShaderGLES1::SCREENZ_SCALE, Math::fmod(time, 3600.0));
@@ -3168,7 +3375,7 @@ void RasterizerPSP::add_particles( const RID& p_particle_instance, const Instanc
 	ERR_FAIL_COND(!p);
 
 	_add_geometry(p,p_data,p,particles_instance);
-
+	draw_next_frame = true;
 }
 
 
@@ -3561,7 +3768,7 @@ static const int gl_texcoord_index[VS::ARRAY_MAX-1] = {
 	-1, // ARRAY_WEIGHTS
 };
 
-
+/*
 Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material* p_material, const Skeleton *p_skeleton,const float *p_morphs) {
 
 
@@ -3605,7 +3812,7 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 				if (!can_copy_to_local)
 					skeleton_valid=false;
 
-				/* compute morphs */
+
 
 				if (p_morphs && surf->morph_target_count && can_copy_to_local) {
 
@@ -3857,7 +4064,7 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 
 					glVertexPointer(3,ad.datatype,stride,&base[ad.ofs]);
 
-				} break; /* fallthrough to normal */
+				} break;
 				case VS::ARRAY_NORMAL: {
 
 					glNormalPointer(ad.datatype,stride,&base[ad.ofs]);
@@ -3893,6 +4100,478 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 
 		default: break;
 
+	};
+
+	return OK;
+};
+*/
+template <bool USE_NORMAL, bool USE_TANGENT, bool INPLACE>
+void RasterizerPSP::_skeleton_xform(const uint8_t *p_src_array, int p_src_stride, uint8_t *p_dst_array, int p_dst_stride, int p_elements, const uint8_t *p_src_bones, const uint8_t *p_src_weights, const Skeleton::Bone *p_bone_xforms) {
+
+	uint32_t basesize = 3;
+	if (USE_NORMAL)
+		basesize += 3;
+	if (USE_TANGENT)
+		basesize += 4;
+
+	uint32_t extra = (p_dst_stride - basesize * 4);
+	const int dstvec_size = 3 + (USE_NORMAL ? 3 : 0) + (USE_TANGENT ? 4 : 0);
+	float dstcopy[dstvec_size];
+
+	for (int i = 0; i < p_elements; i++) {
+
+		uint32_t ss = p_src_stride * i;
+		uint32_t ds = p_dst_stride * i;
+		const uint16_t *bi = (const uint16_t *)&p_src_bones[ss];
+		const float *bw = (const float *)&p_src_weights[ss];
+		const float *src_vec = (const float *)&p_src_array[ss];
+		float *dst_vec;
+		if (INPLACE)
+			dst_vec = dstcopy;
+		else
+			dst_vec = (float *)&p_dst_array[ds];
+
+		dst_vec[0] = 0.0;
+		dst_vec[1] = 0.0;
+		dst_vec[2] = 0.0;
+		//conditionals simply removed by optimizer
+		if (USE_NORMAL) {
+
+			dst_vec[3] = 0.0;
+			dst_vec[4] = 0.0;
+			dst_vec[5] = 0.0;
+
+			if (USE_TANGENT) {
+
+				dst_vec[6] = 0.0;
+				dst_vec[7] = 0.0;
+				dst_vec[8] = 0.0;
+				dst_vec[9] = src_vec[9];
+			}
+		} else {
+
+			if (USE_TANGENT) {
+
+				dst_vec[3] = 0.0;
+				dst_vec[4] = 0.0;
+				dst_vec[5] = 0.0;
+				dst_vec[6] = src_vec[6];
+			}
+		}
+
+#define _XFORM_BONE(m_idx)                                                                     \
+	if (bw[m_idx] == 0)                                                                        \
+		goto end;                                                                              \
+	p_bone_xforms[bi[m_idx]].transform_add_mul3(&src_vec[0], &dst_vec[0], bw[m_idx]);          \
+	if (USE_NORMAL) {                                                                          \
+		p_bone_xforms[bi[m_idx]].transform3_add_mul3(&src_vec[3], &dst_vec[3], bw[m_idx]);     \
+		if (USE_TANGENT) {                                                                     \
+			p_bone_xforms[bi[m_idx]].transform3_add_mul3(&src_vec[6], &dst_vec[6], bw[m_idx]); \
+		}                                                                                      \
+	} else {                                                                                   \
+		if (USE_TANGENT) {                                                                     \
+			p_bone_xforms[bi[m_idx]].transform3_add_mul3(&src_vec[3], &dst_vec[3], bw[m_idx]); \
+		}                                                                                      \
+	}
+
+		_XFORM_BONE(0);
+		_XFORM_BONE(1);
+		_XFORM_BONE(2);
+		_XFORM_BONE(3);
+
+	end:
+
+		if (INPLACE) {
+
+			const uint8_t *esp = (const uint8_t *)dstcopy;
+			uint8_t *edp = (uint8_t *)&p_dst_array[ds];
+
+			for (uint32_t j = 0; j < dstvec_size * 4; j++) {
+
+				edp[j] = esp[j];
+			}
+
+		} else {
+			//copy extra stuff
+			const uint8_t *esp = (const uint8_t *)&src_vec[basesize];
+			uint8_t *edp = (uint8_t *)&dst_vec[basesize];
+
+			for (uint32_t j = 0; j < extra; j++) {
+
+				edp[j] = esp[j];
+			}
+		}
+	}
+}
+
+Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material *p_material, const Skeleton *p_skeleton, const float *p_morphs) {
+
+	switch (p_geometry->type) {
+
+		case Geometry::GEOMETRY_MULTISURFACE:
+		case Geometry::GEOMETRY_SURFACE: {
+
+			const Surface *surf = NULL;
+			if (p_geometry->type == Geometry::GEOMETRY_SURFACE)
+				surf = static_cast<const Surface *>(p_geometry);
+			else if (p_geometry->type == Geometry::GEOMETRY_MULTISURFACE)
+				surf = static_cast<const MultiMeshSurface *>(p_geometry)->surface;
+
+			if (surf->format != surf->configured_format) {
+				if (OS::get_singleton()->is_stdout_verbose()) {
+
+					print_line("has format: " + itos(surf->format));
+					print_line("configured format: " + itos(surf->configured_format));
+				}
+				ERR_EXPLAIN("Missing arrays (not set) in surface");
+			}
+			ERR_FAIL_COND_V(surf->format != surf->configured_format, ERR_UNCONFIGURED);
+			uint8_t *base = 0;
+			int stride = surf->stride;
+			bool use_VBO = (surf->array_local == 0);
+			_setup_geometry_vinfo = surf->array_len;
+
+			bool skeleton_valid = p_skeleton && (surf->format & VS::ARRAY_FORMAT_BONES) && (surf->format & VS::ARRAY_FORMAT_WEIGHTS) && !p_skeleton->bones.empty() && p_skeleton->bones.size() > surf->max_bone;
+			/*
+			if (surf->packed) {
+				float scales[4]={surf->vertex_scale,surf->uv_scale,surf->uv2_scale,0.0};
+				glVertexAttrib4fv( 7, scales );
+			} else {
+				glVertexAttrib4f( 7, 1,1,1,1 );
+			}*/
+
+			if (!use_VBO) {
+
+// 				DEBUG_TEST_ERROR("Draw NO VBO");
+
+				base = surf->array_local;
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+				bool can_copy_to_local = surf->local_stride * surf->array_len <= skinned_buffer_size;
+				if (p_morphs && surf->stride * surf->array_len > skinned_buffer_size)
+					can_copy_to_local = false;
+
+				if (!can_copy_to_local)
+					skeleton_valid = false;
+
+				/* compute morphs */
+
+				if (p_morphs && surf->morph_target_count && can_copy_to_local) {
+
+					base = skinned_buffer;
+					stride = surf->local_stride;
+
+					//copy all first
+					float coef = 1.0;
+
+					for (int i = 0; i < surf->morph_target_count; i++) {
+						if (surf->mesh->morph_target_mode == VS::MORPH_MODE_NORMALIZED)
+							coef -= p_morphs[i];
+						ERR_FAIL_COND_V(surf->morph_format != surf->morph_targets_local[i].configured_format, ERR_INVALID_DATA);
+					}
+
+					int16_t coeffp = CLAMP(coef * 255, 0, 255);
+
+					for (int i = 0; i < VS::ARRAY_MAX - 1; i++) {
+
+						const Surface::ArrayData &ad = surf->array[i];
+						if (ad.size == 0)
+							continue;
+
+						int ofs = ad.ofs;
+						int src_stride = surf->stride;
+						int dst_stride = skeleton_valid ? surf->stride : surf->local_stride;
+						int count = surf->array_len;
+
+						if (!skeleton_valid && i >= VS::ARRAY_MAX - 3)
+							break;
+
+						switch (i) {
+
+							case VS::ARRAY_VERTEX:
+							case VS::ARRAY_NORMAL:
+							case VS::ARRAY_TANGENT: {
+
+								for (int k = 0; k < count; k++) {
+
+									const float *src = (const float *)&surf->array_local[ofs + k * src_stride];
+									float *dst = (float *)&base[ofs + k * dst_stride];
+
+									dst[0] = src[0] * coef;
+									dst[1] = src[1] * coef;
+									dst[2] = src[2] * coef;
+								};
+
+							} break;
+							case VS::ARRAY_COLOR: {
+
+								for (int k = 0; k < count; k++) {
+
+									const uint8_t *src = (const uint8_t *)&surf->array_local[ofs + k * src_stride];
+									uint8_t *dst = (uint8_t *)&base[ofs + k * dst_stride];
+
+									dst[0] = (src[0] * coeffp) >> 8;
+									dst[1] = (src[1] * coeffp) >> 8;
+									dst[2] = (src[2] * coeffp) >> 8;
+									dst[3] = (src[3] * coeffp) >> 8;
+								}
+
+							} break;
+							case VS::ARRAY_TEX_UV:
+							case VS::ARRAY_TEX_UV2: {
+
+								for (int k = 0; k < count; k++) {
+
+									const float *src = (const float *)&surf->array_local[ofs + k * src_stride];
+									float *dst = (float *)&base[ofs + k * dst_stride];
+
+									dst[0] = src[0] * coef;
+									dst[1] = src[1] * coef;
+								}
+
+							} break;
+							case VS::ARRAY_BONES:
+							case VS::ARRAY_WEIGHTS: {
+
+								for (int k = 0; k < count; k++) {
+
+									const float *src = (const float *)&surf->array_local[ofs + k * src_stride];
+									float *dst = (float *)&base[ofs + k * dst_stride];
+
+									dst[0] = src[0];
+									dst[1] = src[1];
+									dst[2] = src[2];
+									dst[3] = src[3];
+								}
+
+							} break;
+						}
+					}
+
+					for (int j = 0; j < surf->morph_target_count; j++) {
+
+						for (int i = 0; i < VS::ARRAY_MAX - 3; i++) {
+
+							const Surface::ArrayData &ad = surf->array[i];
+							if (ad.size == 0)
+								continue;
+
+							int ofs = ad.ofs;
+							int src_stride = surf->local_stride;
+							int dst_stride = skeleton_valid ? surf->stride : surf->local_stride;
+							int count = surf->array_len;
+							const uint8_t *morph = surf->morph_targets_local[j].array;
+							float w = p_morphs[j];
+							int16_t wfp = CLAMP(w * 255, 0, 255);
+
+							switch (i) {
+
+								case VS::ARRAY_VERTEX:
+								case VS::ARRAY_NORMAL:
+								case VS::ARRAY_TANGENT: {
+
+									for (int k = 0; k < count; k++) {
+
+										const float *src_morph = (const float *)&morph[ofs + k * src_stride];
+										float *dst = (float *)&base[ofs + k * dst_stride];
+
+										dst[0] += src_morph[0] * w;
+										dst[1] += src_morph[1] * w;
+										dst[2] += src_morph[2] * w;
+									}
+
+								} break;
+								case VS::ARRAY_COLOR: {
+									for (int k = 0; k < count; k++) {
+
+										const uint8_t *src = (const uint8_t *)&morph[ofs + k * src_stride];
+										uint8_t *dst = (uint8_t *)&base[ofs + k * dst_stride];
+
+										dst[0] = (src[0] * wfp) >> 8;
+										dst[1] = (src[1] * wfp) >> 8;
+										dst[2] = (src[2] * wfp) >> 8;
+										dst[3] = (src[3] * wfp) >> 8;
+									}
+
+								} break;
+								case VS::ARRAY_TEX_UV:
+								case VS::ARRAY_TEX_UV2: {
+
+									for (int k = 0; k < count; k++) {
+
+										const float *src_morph = (const float *)&morph[ofs + k * src_stride];
+										float *dst = (float *)&base[ofs + k * dst_stride];
+
+										dst[0] += src_morph[0] * w;
+										dst[1] += src_morph[1] * w;
+									}
+
+								} break;
+							}
+						}
+					}
+
+					if (skeleton_valid) {
+
+						const uint8_t *src_weights = &surf->array_local[surf->array[VS::ARRAY_WEIGHTS].ofs];
+						const uint8_t *src_bones = &surf->array_local[surf->array[VS::ARRAY_BONES].ofs];
+						const Skeleton::Bone *skeleton = &p_skeleton->bones[0];
+
+						if (surf->format & VS::ARRAY_FORMAT_NORMAL && surf->format & VS::ARRAY_FORMAT_TANGENT)
+							_skeleton_xform<true, true, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
+						else if (surf->format & (VS::ARRAY_FORMAT_NORMAL))
+							_skeleton_xform<true, false, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
+						else if (surf->format & (VS::ARRAY_FORMAT_TANGENT))
+							_skeleton_xform<false, true, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
+						else
+							_skeleton_xform<false, false, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
+					}
+
+					stride = skeleton_valid ? surf->stride : surf->local_stride;
+
+#if 0
+					{
+						//in-place skeleton tansformation, only used for morphs, slow.
+						//should uptimize some day....
+
+						const uint8_t *src_weights=&surf->array_local[surf->array[VS::ARRAY_WEIGHTS].ofs];
+						const uint8_t *src_bones=&surf->array_local[surf->array[VS::ARRAY_BONES].ofs];
+						int src_stride = surf->stride;
+						int count = surf->array_len;
+						const Transform *skeleton = &p_skeleton->bones[0];
+
+						for(int i=0;i<VS::ARRAY_MAX-1;i++) {
+
+							const Surface::ArrayData& ad=surf->array[i];
+							if (ad.size==0)
+								continue;
+
+							int ofs = ad.ofs;
+
+
+							switch(i) {
+
+								case VS::ARRAY_VERTEX: {
+									for(int k=0;k<count;k++) {
+
+										float *ptr=  (float*)&base[ofs+k*stride];
+										const GLfloat* weights = reinterpret_cast<const GLfloat*>(&src_weights[k*src_stride]);
+										const GLfloat *bones = reinterpret_cast<const GLfloat*>(&src_bones[k*src_stride]);
+
+										Vector3 src( ptr[0], ptr[1], ptr[2] );
+										Vector3 dst;
+										for(int j=0;j<VS::ARRAY_WEIGHTS_SIZE;j++) {
+
+											float w = weights[j];
+											if (w==0)
+												break;
+
+											//print_line("accum "+itos(i)+" += "+rtos(Math::ftoi(bones[j]))+" * "+skeleton[ Math::ftoi(bones[j]) ]+" * "+rtos(w));
+											int bidx = Math::fast_ftoi(bones[j]);
+											dst+=skeleton[ bidx ].xform(src) * w;
+										}
+
+										ptr[0]=dst.x;
+										ptr[1]=dst.y;
+										ptr[2]=dst.z;
+
+									} break;
+
+								} break;
+								case VS::ARRAY_NORMAL:
+								case VS::ARRAY_TANGENT: {
+									for(int k=0;k<count;k++) {
+
+										float *ptr=  (float*)&base[ofs+k*stride];
+										const GLfloat* weights = reinterpret_cast<const GLfloat*>(&src_weights[k*src_stride]);
+										const GLfloat *bones = reinterpret_cast<const GLfloat*>(&src_bones[k*src_stride]);
+
+										Vector3 src( ptr[0], ptr[1], ptr[2] );
+										Vector3 dst;
+										for(int j=0;j<VS::ARRAY_WEIGHTS_SIZE;j++) {
+
+											float w = weights[j];
+											if (w==0)
+												break;
+
+											//print_line("accum "+itos(i)+" += "+rtos(Math::ftoi(bones[j]))+" * "+skeleton[ Math::ftoi(bones[j]) ]+" * "+rtos(w));
+											int bidx=Math::fast_ftoi(bones[j]);
+											dst+=skeleton[ bidx ].basis.xform(src) * w;
+										}
+
+										ptr[0]=dst.x;
+										ptr[1]=dst.y;
+										ptr[2]=dst.z;
+
+									} break;
+
+								} break;
+							}
+						}
+					}
+#endif
+
+				} else if (skeleton_valid) {
+
+					base = skinned_buffer;
+					//copy stuff and get it ready for the skeleton
+
+					int dst_stride = surf->stride - (surf->array[VS::ARRAY_BONES].size + surf->array[VS::ARRAY_WEIGHTS].size);
+					const uint8_t *src_weights = &surf->array_local[surf->array[VS::ARRAY_WEIGHTS].ofs];
+					const uint8_t *src_bones = &surf->array_local[surf->array[VS::ARRAY_BONES].ofs];
+					const Skeleton::Bone *skeleton = &p_skeleton->bones[0];
+
+					if (surf->format & VS::ARRAY_FORMAT_NORMAL && surf->format & VS::ARRAY_FORMAT_TANGENT)
+						_skeleton_xform<true, true, false>(surf->array_local, surf->stride, base, dst_stride, surf->array_len, src_bones, src_weights, skeleton);
+					else if (surf->format & (VS::ARRAY_FORMAT_NORMAL))
+						_skeleton_xform<true, false, false>(surf->array_local, surf->stride, base, dst_stride, surf->array_len, src_bones, src_weights, skeleton);
+					else if (surf->format & (VS::ARRAY_FORMAT_TANGENT))
+						_skeleton_xform<false, true, false>(surf->array_local, surf->stride, base, dst_stride, surf->array_len, src_bones, src_weights, skeleton);
+					else
+						_skeleton_xform<false, false, false>(surf->array_local, surf->stride, base, dst_stride, surf->array_len, src_bones, src_weights, skeleton);
+
+					stride = dst_stride;
+				}
+
+			} else {
+
+				glBindBuffer(GL_ARRAY_BUFFER, surf->vertex_id);
+			};
+
+			for (int i = 0; i < (VS::ARRAY_MAX - 1); i++) {
+
+				const Surface::ArrayData &ad = surf->array[i];
+
+				//				if (!gl_texcoord_shader[i])
+				//					continue;
+
+				if (ad.size == 0 || !ad.bind) {
+					glDisableClientState(GL_VERTEX_ARRAY);
+					if (i == VS::ARRAY_COLOR) {
+						printf("_set_glcoloro\n");
+// 						_set_glcoloro(Color(1, 1, 1, 1));
+					};
+					//print_line("disable: "+itos(i));
+					continue; // this one is disabled.
+				}
+
+				glEnableClientState(GL_VERTEX_ARRAY);
+				//				print_line("set: "+itos(i)+" - count: "+itos(ad.count)+" datatype: "+itos(ad.datatype)+" ofs: "+itos(ad.ofs)+" stride: "+itos(stride)+" total len: "+itos(surf->array_len));
+				glVertexPointer(ad.count, ad.datatype, stride, &base[ad.ofs]);
+			}
+#ifdef GLEW_ENABLED
+			//"desktop" opengl needs this.
+			if (surf->primitive == VS::PRIMITIVE_POINTS) {
+				glEnable(GL_POINT_SPRITE);
+				glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+
+			} else {
+				glDisable(GL_POINT_SPRITE);
+				glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
+			}
+#endif
+		} break;
+
+		default: break;
 	};
 
 	return OK;
@@ -4689,6 +5368,49 @@ void RasterizerPSP::canvas_end_rect() {
 	glPopMatrix();
 }
 
+RasterizerPSP::Texture *RasterizerPSP::_bind_canvas_texture(const RID &p_texture) {
+	glEnable(GL_TEXTURE_2D);
+
+	if (p_texture == canvas_tex) {
+		if (canvas_tex.is_valid()) {
+			Texture *texture = texture_owner.get(p_texture);
+			return texture;
+		}
+		return NULL;
+	}
+
+// 	rebind_texpixel_size = false;
+
+	if (p_texture.is_valid()) {
+
+		Texture *texture = texture_owner.get(p_texture);
+		if (!texture) {
+			canvas_tex = RID();
+			glBindTexture(GL_TEXTURE_2D, white_tex);
+
+			return NULL;
+		}
+
+// 		if (texture->render_target)
+// 			texture->render_target->last_pass = frame;
+
+		glBindTexture(GL_TEXTURE_2D, texture->tex_id);
+		canvas_tex = p_texture;
+// 		if (uses_texpixel_size) {
+// 			canvas_shader.set_uniform(CanvasShaderGLES2::TEXPIXEL_SIZE, Size2(1.0 / texture->width, 1.0 / texture->height));
+// 		}
+		return texture;
+
+	} else {
+
+		glBindTexture(GL_TEXTURE_2D, white_tex);
+		canvas_tex = p_texture;
+	}
+
+	return NULL;
+}
+
+
 template<bool use_normalmap>
 void RasterizerPSP::_canvas_item_render_commands(CanvasItem *p_item, CanvasItem *current_clip, bool &reclip) {
 
@@ -5215,7 +5937,7 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list,int p_z,const Co
 // 	}
 }
 
-
+/*
 void RasterizerPSP::canvas_draw_line(const Point2& p_from, const Point2& p_to,const Color& p_color,float p_width) {
 
 	glDisable(GL_TEXTURE_2D);
@@ -5233,10 +5955,27 @@ void RasterizerPSP::canvas_draw_line(const Point2& p_from, const Point2& p_to,co
 	colors[1].a*=canvas_opacity;
 	glLineWidth(p_width);
 	_draw_primitive(2,verts,0,colors,0);
+}*/
 
+void RasterizerPSP::canvas_draw_line(const Point2 &p_from, const Point2 &p_to, const Color &p_color, float p_width) {
+
+	_bind_canvas_texture(RID());
+	Color c = p_color;
+	c.a *= canvas_opacity;
+	_set_glcoloro(c, c.a);
+
+	Vector3 verts[2] = {
+		Vector3(p_from.x, p_from.y, 0),
+		Vector3(p_to.x, p_to.y, 0)
+	};
+
+	glLineWidth(p_width);
+	_draw_primitive(2, verts, 0, 0, 0);
+	_rinfo.ci_draw_commands++;
 }
 
-static void _draw_textured_quad(const Rect2& p_rect, const Rect2& p_src_region, const Size2& p_tex_size,bool p_flip_h=false,bool p_flip_v=false ) {
+
+void RasterizerPSP::_draw_textured_quad(const Rect2& p_rect, const Rect2& p_src_region, const Size2& p_tex_size,bool p_flip_h ,bool p_flip_v ,bool p_transpose) {
 
 
 	Vector3 texcoords[4]= {
@@ -5272,7 +6011,46 @@ static void _draw_textured_quad(const Rect2& p_rect, const Rect2& p_src_region, 
 
 	_draw_primitive(4,coords,0,0,texcoords);
 }
+/*
+void RasterizerPSP::_draw_textured_quad(const Rect2 &p_rect, const Rect2 &p_src_region, const Size2 &p_tex_size, bool p_h_flip, bool p_v_flip, bool p_transpose) {
 
+	Vector2 texcoords[4] = {
+		Vector2(p_src_region.pos.x / p_tex_size.width,
+				p_src_region.pos.y / p_tex_size.height),
+
+		Vector2((p_src_region.pos.x + p_src_region.size.width) / p_tex_size.width,
+				p_src_region.pos.y / p_tex_size.height),
+
+		Vector2((p_src_region.pos.x + p_src_region.size.width) / p_tex_size.width,
+				(p_src_region.pos.y + p_src_region.size.height) / p_tex_size.height),
+
+		Vector2(p_src_region.pos.x / p_tex_size.width,
+				(p_src_region.pos.y + p_src_region.size.height) / p_tex_size.height)
+	};
+
+	if (p_transpose) {
+		SWAP(texcoords[1], texcoords[3]);
+	}
+	if (p_h_flip) {
+		SWAP(texcoords[0], texcoords[1]);
+		SWAP(texcoords[2], texcoords[3]);
+	}
+	if (p_v_flip) {
+		SWAP(texcoords[1], texcoords[2]);
+		SWAP(texcoords[0], texcoords[3]);
+	}
+
+	Vector2 coords[4] = {
+		Vector2(p_rect.pos.x, p_rect.pos.y),
+		Vector2(p_rect.pos.x + p_rect.size.width, p_rect.pos.y),
+		Vector2(p_rect.pos.x + p_rect.size.width, p_rect.pos.y + p_rect.size.height),
+		Vector2(p_rect.pos.x, p_rect.pos.y + p_rect.size.height)
+	};
+
+	_draw_gui_primitive(4, coords, 0, texcoords);
+// 	_rinfo.ci_draw_commands++;
+}
+*/
 static void _draw_quad(const Rect2& p_rect) {
 
 	Vector3 coords[4]= {
@@ -5286,40 +6064,101 @@ static void _draw_quad(const Rect2& p_rect) {
 
 }
 
+void RasterizerPSP::canvas_disable_blending() {
+	glDisable(GL_BLEND);
+}
 
-void RasterizerPSP::canvas_draw_rect(const Rect2& p_rect, int p_flags, const Rect2& p_source,RID p_texture,const Color& p_modulate) {
 
-	_set_glcoloro( p_modulate,canvas_opacity );
+void RasterizerPSP::canvas_draw_rect(const Rect2 &p_rect, int p_flags, const Rect2 &p_source, RID p_texture, const Color &p_modulate) {
 
-	if ( p_texture.is_valid() ) {
-// 		printf("valid\n");
+	Color m = p_modulate;
+// 	m.a *= canvas_opacity;
+	_set_glcoloro(m,canvas_opacity);
+// 	glEnable(GL_TEXTURE_2D);
+	Texture *texture = _bind_canvas_texture( p_texture );
+// 	ERR_FAIL_COND(!texture);
+// 	glActiveTexture(GL_TEXTURE0);
+// 	glBindTexture( GL_TEXTURE_2D,texture->tex_id );
 
-		glEnable(GL_TEXTURE_2D);
-		Texture *texture = texture_owner.get( p_texture );
-		ERR_FAIL_COND(!texture);
-		//glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D,texture->tex_id );
+	if (texture) {
 
-		if (!(p_flags&CANVAS_RECT_REGION)) {
+		bool untile = false;
 
-			Rect2 region = Rect2(0,0,texture->width,texture->height);
-			_draw_textured_quad(p_rect,region,region.size,p_flags&CANVAS_RECT_FLIP_H,p_flags&CANVAS_RECT_FLIP_V);
+		if (p_flags & CANVAS_RECT_TILE && !(texture->flags & VS::TEXTURE_FLAG_REPEAT)) {
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			untile = true;
+		}
+
+		if (!(p_flags & CANVAS_RECT_REGION)) {
+
+			Rect2 region = Rect2(0, 0, texture->width, texture->height);
+			_draw_textured_quad(p_rect, region, region.size, p_flags & CANVAS_RECT_FLIP_H, p_flags & CANVAS_RECT_FLIP_V, p_flags & CANVAS_RECT_TRANSPOSE);
 
 		} else {
 
-
-			_draw_textured_quad(p_rect, p_source, Size2(texture->width,texture->height),p_flags&CANVAS_RECT_FLIP_H,p_flags&CANVAS_RECT_FLIP_V );
-
+			_draw_textured_quad(p_rect, p_source, Size2(texture->width, texture->height), p_flags & CANVAS_RECT_FLIP_H, p_flags & CANVAS_RECT_FLIP_V, p_flags & CANVAS_RECT_TRANSPOSE);
 		}
+
+		if (untile) {
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		}
+
 	} else {
 
 		glDisable(GL_TEXTURE_2D);
-		_draw_quad( p_rect );
-
+		_draw_quad(p_rect);
+		//print_line("rect: "+p_rect);
 	}
 
-
+// 	_rinfo.ci_draw_commands++;
 }
+
+/*
+
+void RasterizerPSP::canvas_draw_rect(const Rect2 &p_rect, int p_flags, const Rect2 &p_source, RID p_texture, const Color &p_modulate) {
+
+	Color m = p_modulate;
+	m.a *= canvas_opacity;
+	_set_glcoloro(m, m.a);
+	Texture *texture = _bind_canvas_texture(p_texture);
+
+	if (texture) {
+
+		bool untile = false;
+
+		if (p_flags & CANVAS_RECT_TILE && !(texture->flags & VS::TEXTURE_FLAG_REPEAT)) {
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			untile = true;
+		}
+
+		if (!(p_flags & CANVAS_RECT_REGION)) {
+
+			Rect2 region = Rect2(0, 0, texture->width, texture->height);
+			_draw_textured_quad(p_rect, region, region.size, p_flags & CANVAS_RECT_FLIP_H, p_flags & CANVAS_RECT_FLIP_V, p_flags & CANVAS_RECT_TRANSPOSE);
+
+		} else {
+
+			_draw_textured_quad(p_rect, p_source, Size2(texture->width, texture->height), p_flags & CANVAS_RECT_FLIP_H, p_flags & CANVAS_RECT_FLIP_V, p_flags & CANVAS_RECT_TRANSPOSE);
+		}
+
+		if (untile) {
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		}
+
+	} else {
+
+		//glDisable(GL_TEXTURE_2D);
+		_draw_quad(p_rect);
+		//print_line("rect: "+p_rect);
+	}
+
+// 	_rinfo.ci_draw_commands++;
+}
+/*
 void RasterizerPSP::canvas_draw_style_box(const Rect2 &p_rect, const Rect2 &p_src_region, RID p_texture, const float *p_margins, bool p_draw_center, const Color &p_modulate) {
 
 	_set_glcoloro( p_modulate,canvas_opacity );
@@ -5333,7 +6172,7 @@ void RasterizerPSP::canvas_draw_style_box(const Rect2 &p_rect, const Rect2 &p_sr
 	glBindTexture( GL_TEXTURE_2D,texture->tex_id );
 
 
-	/* CORNERS */
+
 
 	_draw_textured_quad( // top left
 		Rect2( p_rect.pos, Size2(p_margins[MARGIN_LEFT],p_margins[MARGIN_TOP])),
@@ -5389,9 +6228,81 @@ void RasterizerPSP::canvas_draw_style_box(const Rect2 &p_rect, const Rect2 &p_sr
 			Size2( texture->width, texture->height ));
 	}
 
-}
-void RasterizerPSP::canvas_draw_primitive(const Vector<Point2>& p_points, const Vector<Color>& p_colors,const Vector<Point2>& p_uvs, RID p_texture,float p_width) {
+}*/
 
+void RasterizerPSP::canvas_draw_style_box(const Rect2 &p_rect, const Rect2 &p_src_region, RID p_texture, const float *p_margin, bool p_draw_center, const Color &p_modulate) {
+
+	Color m = p_modulate;
+	m.a *= canvas_opacity;
+	_set_glcoloro(m, m.a);
+
+	Texture *texture = _bind_canvas_texture(p_texture);
+	ERR_FAIL_COND(!texture);
+
+	Rect2 region = p_src_region;
+	if (region.size.width <= 0)
+		region.size.width = texture->width;
+	if (region.size.height <= 0)
+		region.size.height = texture->height;
+	/* CORNERS */
+	_draw_textured_quad( // top left
+			Rect2(p_rect.pos, Size2(p_margin[MARGIN_LEFT], p_margin[MARGIN_TOP])),
+			Rect2(region.pos, Size2(p_margin[MARGIN_LEFT], p_margin[MARGIN_TOP])),
+			Size2(texture->width, texture->height));
+
+	_draw_textured_quad( // top right
+			Rect2(Point2(p_rect.pos.x + p_rect.size.width - p_margin[MARGIN_RIGHT], p_rect.pos.y), Size2(p_margin[MARGIN_RIGHT], p_margin[MARGIN_TOP])),
+			Rect2(Point2(region.pos.x + region.size.width - p_margin[MARGIN_RIGHT], region.pos.y), Size2(p_margin[MARGIN_RIGHT], p_margin[MARGIN_TOP])),
+			Size2(texture->width, texture->height));
+
+	_draw_textured_quad( // bottom left
+			Rect2(Point2(p_rect.pos.x, p_rect.pos.y + p_rect.size.height - p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_LEFT], p_margin[MARGIN_BOTTOM])),
+			Rect2(Point2(region.pos.x, region.pos.y + region.size.height - p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_LEFT], p_margin[MARGIN_BOTTOM])),
+			Size2(texture->width, texture->height));
+
+	_draw_textured_quad( // bottom right
+			Rect2(Point2(p_rect.pos.x + p_rect.size.width - p_margin[MARGIN_RIGHT], p_rect.pos.y + p_rect.size.height - p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_RIGHT], p_margin[MARGIN_BOTTOM])),
+			Rect2(Point2(region.pos.x + region.size.width - p_margin[MARGIN_RIGHT], region.pos.y + region.size.height - p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_RIGHT], p_margin[MARGIN_BOTTOM])),
+			Size2(texture->width, texture->height));
+
+	Rect2 rect_center(p_rect.pos + Point2(p_margin[MARGIN_LEFT], p_margin[MARGIN_TOP]), Size2(p_rect.size.width - p_margin[MARGIN_LEFT] - p_margin[MARGIN_RIGHT], p_rect.size.height - p_margin[MARGIN_TOP] - p_margin[MARGIN_BOTTOM]));
+
+	Rect2 src_center(Point2(region.pos.x + p_margin[MARGIN_LEFT], region.pos.y + p_margin[MARGIN_TOP]), Size2(region.size.width - p_margin[MARGIN_LEFT] - p_margin[MARGIN_RIGHT], region.size.height - p_margin[MARGIN_TOP] - p_margin[MARGIN_BOTTOM]));
+
+	_draw_textured_quad( // top
+			Rect2(Point2(rect_center.pos.x, p_rect.pos.y), Size2(rect_center.size.width, p_margin[MARGIN_TOP])),
+			Rect2(Point2(src_center.pos.x, region.pos.y), Size2(src_center.size.width, p_margin[MARGIN_TOP])),
+			Size2(texture->width, texture->height));
+
+	_draw_textured_quad( // bottom
+			Rect2(Point2(rect_center.pos.x, rect_center.pos.y + rect_center.size.height), Size2(rect_center.size.width, p_margin[MARGIN_BOTTOM])),
+			Rect2(Point2(src_center.pos.x, src_center.pos.y + src_center.size.height), Size2(src_center.size.width, p_margin[MARGIN_BOTTOM])),
+			Size2(texture->width, texture->height));
+
+	_draw_textured_quad( // left
+			Rect2(Point2(p_rect.pos.x, rect_center.pos.y), Size2(p_margin[MARGIN_LEFT], rect_center.size.height)),
+			Rect2(Point2(region.pos.x, region.pos.y + p_margin[MARGIN_TOP]), Size2(p_margin[MARGIN_LEFT], src_center.size.height)),
+			Size2(texture->width, texture->height));
+
+	_draw_textured_quad( // right
+			Rect2(Point2(rect_center.pos.x + rect_center.size.width, rect_center.pos.y), Size2(p_margin[MARGIN_RIGHT], rect_center.size.height)),
+			Rect2(Point2(src_center.pos.x + src_center.size.width, region.pos.y + p_margin[MARGIN_TOP]), Size2(p_margin[MARGIN_RIGHT], src_center.size.height)),
+			Size2(texture->width, texture->height));
+
+	if (p_draw_center) {
+
+		_draw_textured_quad(
+				rect_center,
+				src_center,
+				Size2(texture->width, texture->height));
+	}
+
+// 	_rinfo.ci_draw_commands++;
+}
+
+
+void RasterizerPSP::canvas_draw_primitive(const Vector<Point2>& p_points, const Vector<Color>& p_colors,const Vector<Point2>& p_uvs, RID p_texture,float p_width) {
+/*
 	ERR_FAIL_COND(p_points.size()<1);
 	Vector3 verts[4];
 	Vector3 uvs[4];
@@ -5418,8 +6329,25 @@ void RasterizerPSP::canvas_draw_primitive(const Vector<Point2>& p_points, const 
 	}
 
 	glLineWidth(p_width);
-	_draw_primitive(p_points.size(),&verts[0],NULL,p_colors.size()?&p_colors[0]:NULL,p_uvs.size()?uvs:NULL);
+	_draw_primitive(p_points.size(),&verts[0],NULL,p_colors.size()?&p_colors[0]:NULL,p_uvs.size()?uvs:NULL);*/
+	Vector3 verts[4];
+	Vector3 uvs[4];
+	for(int i=0;i<p_points.size();i++) {
 
+		verts[i]=Vector3(p_points[i].x,p_points[i].y,0);
+	}
+
+	for(int i=0;i<p_uvs.size();i++) {
+
+		uvs[i]=Vector3(p_uvs[i].x,p_uvs[i].y,0);
+	}
+
+	ERR_FAIL_COND(p_points.size() < 1);
+	_set_glcoloro(Color(1, 1, 1), canvas_opacity);
+	_bind_canvas_texture(p_texture);
+	_draw_primitive(p_points.size(), verts,NULL, p_colors.ptr(), uvs);
+
+// 	_rinfo.ci_draw_commands++;
 }
 
 static const int _max_draw_poly_indices = 8*1024;
@@ -6318,7 +7246,7 @@ int RasterizerPSP::get_render_info(VS::RenderInfo p_info) {
 
 bool RasterizerPSP::needs_to_draw_next_frame() const {
 
-	return false;
+	return draw_next_frame;
 }
 
 void RasterizerPSP::reload_vram() {
@@ -6399,6 +7327,7 @@ RasterizerPSP::RasterizerPSP(bool p_keep_copies,bool p_use_reload_hooks) {
 	use_reload_hooks=p_use_reload_hooks;
 
 	frame = 0;
+	draw_next_frame = false;
 };
 
 RasterizerPSP::~RasterizerPSP() {
