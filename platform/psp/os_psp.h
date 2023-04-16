@@ -32,6 +32,7 @@
 #define OS_PSP_H
 
 #include "audio_driver_psp.h"
+#include "joypad_psp.h"
 // #include "drivers/rtaudio/audio_driver_rtaudio.h"
 #include "drivers/unix/os_unix.h"
 #include "main/input_default.h"
@@ -80,6 +81,10 @@ class OS_PSP : public OS {
 
 	bool force_quit;
 
+// 	JoyPadPSP *joy;
+	SceCtrlData pad;
+	int last;
+
 	InputDefault *input;
 
 protected:
@@ -94,6 +99,9 @@ protected:
 	virtual void initialize_core();
 
 	virtual void set_main_loop(MainLoop *p_main_loop);
+
+	virtual void init_keys();
+	virtual void process_keys();
 
 public:
 	virtual String get_name();

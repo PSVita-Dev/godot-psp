@@ -58,7 +58,7 @@ int OS_PSP::get_video_driver_count() const {
 }
 const char *OS_PSP::get_video_driver_name(int p_driver) const {
 
-	return "Dummy";
+	return "PSP";
 }
 OS::VideoMode OS_PSP::get_default_video_mode() const {
 
@@ -163,6 +163,8 @@ void OS_PSP::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 // 	args = OS::get_singleton()->get_cmdline_args();
 	current_videomode = p_desired;
 	main_loop = NULL;
+
+	init_keys();
 
 	rasterizer_psp = memnew(RasterizerPSP);
 
@@ -284,6 +286,50 @@ MainLoop *OS_PSP::get_main_loop() const {
 	return main_loop;
 }
 
+void OS_PSP::init_keys() {
+	sceCtrlSetSamplingCycle(0);
+	sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
+}
+
+PspCtrlButtons buttons[16] = {
+		PSP_CTRL_CROSS,
+		PSP_CTRL_CIRCLE,
+		PSP_CTRL_SQUARE,
+		PSP_CTRL_TRIANGLE,
+		(PspCtrlButtons)0,
+		(PspCtrlButtons)0,
+		PSP_CTRL_LTRIGGER,
+		PSP_CTRL_RTRIGGER,
+		(PspCtrlButtons)0,
+		(PspCtrlButtons)0,
+		PSP_CTRL_SELECT,
+		PSP_CTRL_START,
+		PSP_CTRL_UP,
+		PSP_CTRL_DOWN,
+		PSP_CTRL_LEFT,
+		PSP_CTRL_RIGHT
+};
+
+void OS_PSP::process_keys() {
+	sceCtrlReadBufferPositive(&pad, 1);
+
+	last++;
+
+	if (pad.Buttons != 0) {
+		for(int i = 0; i < 16; i++) {
+			if (pad.Buttons & buttons[i]) {
+				last = input->joy_button(last, 0, i, true);
+			}
+		}
+	} else {
+		for(int i = 0; i < 16; i++) {
+			if (!(pad.Buttons & buttons[i])) {
+				last = input->joy_button(last, 0, i, false);
+			}
+		}
+	}
+}
+
 void OS_PSP::delete_main_loop() {
 
 	if (main_loop)
@@ -326,6 +372,8 @@ void OS_PSP::run() {
 	main_loop->init();
 
 	while (!force_quit) {
+
+		process_keys();
 
 		if (Main::iteration() == true)
 			break;

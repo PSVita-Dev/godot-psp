@@ -3,10 +3,11 @@
 Import('env')
 
 
-common_server = [\
-    "os_psp.cpp",\
-	"audio_driver_psp.cpp",\
-	"rasterizer_psp.cpp",\
+common_server = [
+    "os_psp.cpp",
+	"audio_driver_psp.cpp",
+	"rasterizer_psp.cpp",
+	#"joypad_psp.cpp"
 ]
 
 prog = env.add_program('#bin/godot_psp', ['godot_psp.cpp'] + common_server)

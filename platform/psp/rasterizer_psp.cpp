@@ -189,7 +189,9 @@ static void _draw_primitive(int p_points, const Vector3 *p_vertices, const Vecto
 			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 			glTexCoordPointer(3, GL_FLOAT, 0, p_uvs);
 	};
-// 	printf("points %d\n",p_points);
+// 	GLenum err = glGetError();
+// 	printf("error %d\n");
+
 	glDrawArrays( type, 0, p_points);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
