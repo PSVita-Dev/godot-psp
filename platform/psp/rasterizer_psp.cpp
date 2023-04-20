@@ -35,6 +35,8 @@
 #include "os/os.h"
 #include <stdio.h>
 
+#define print_line
+
 _FORCE_INLINE_ static void _gl_load_transform(const Transform& tr) {
 
 	GLfloat matrix[16]={ /* build a 16x16 matrix */
@@ -5110,8 +5112,8 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list, int p_z, const 
 		CanvasItem *ci = p_item_list;
 
 		canvas_begin_rect(p_item_list->xform);
-// 		canvas_set_opacity( opacity * ci->self_opacity );
-// 		canvas_set_blend_mode( ci->blend_mode );
+// 		canvas_set_opacity(p_item_list->final_opacity);
+// 		canvas_set_blend_mode(p_item_list->blend_mode);
 
 
 
@@ -5471,6 +5473,7 @@ void RasterizerPSP::canvas_set_transform(const Matrix32& p_transform) {
 }
 
 /* FX */
+
 
 RID RasterizerPSP::fx_create() {
 
