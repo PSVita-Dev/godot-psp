@@ -374,6 +374,7 @@ void OS_PSP::run() {
 	while (!force_quit) {
 
 		process_keys();
+// 		visual_server->draw();
 
 		if (Main::iteration() == true)
 			break;
@@ -384,11 +385,12 @@ void OS_PSP::run() {
 
 void OS_PSP::swap_buffers() {
 	glutSwapBuffers();
+// 	printf("swap_buffers, dont do it like this\n");
 }
 
 OS_PSP::OS_PSP() {
 	AudioDriverManagerSW::add_driver(&audio_driver);
 	//adriver here
-// 	_render_thread_mode=RENDER_SEPARATE_THREAD;
+//  	_render_thread_mode=RENDER_THREAD_SAFE;;
 	grab = false;
 };

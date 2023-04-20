@@ -52,7 +52,7 @@ def configure(env):
     env.Append(CPPPATH=[psp_path+"/psp/sdk/include/"])
     env.Append(LIBPATH=[psp_path+"/psp/sdk/lib"])
     
-    env.Append(LIBS=["GL", "glut", "m" ,"c","stdc++", "png","z","libc" , "pspdebug" ,"pspge","pspdisplay" ,"pspctrl" ,"pspsdk", "pspvfpu" ,"psppower", "pspaudiolib", "pspaudio"])
+    env.Append(LIBS=["GL", "GLU", "glut", "m" ,"c","stdc++", "png","z","libc" , "pspdebug" ,"pspge","pspdisplay" ,"pspctrl" ,"pspsdk", "pspvfpu" ,"psppower", "pspaudiolib", "pspaudio", "pspgu", "pspgum"])
 
     # if (env["tools"]=="no"):
     #	#no tools suffix

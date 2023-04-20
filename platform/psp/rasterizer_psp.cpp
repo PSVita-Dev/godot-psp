@@ -1,11 +1,12 @@
 /*************************************************************************/
-/*  rasterizer_gles1.cpp                                                 */
+/*  rasterizer_iphone.cpp                                                */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -26,17 +27,13 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifdef PSP_ENABLED
 
 #include "rasterizer_psp.h"
-#include "os/os.h"
 #include "globals.h"
+#include "os/os.h"
 #include <stdio.h>
-#include "drivers/gl_context/context_gl.h"
-#include "servers/visual/shader_language.h"
-#include "servers/visual/particle_system_sw.h"
-// #include "gl_context/context_gl.h"
-#include <string.h>
 
 _FORCE_INLINE_ static void _gl_load_transform(const Transform& tr) {
 
@@ -183,14 +180,11 @@ static void _draw_primitive(int p_points, const Vector3 *p_vertices, const Vecto
 	};
 
 	if (p_uvs) {
-// 			printf("uv\n");
 
-			//glClientActiveTexture(GL_TEXTURE0);
+// 			glClientActiveTexture(GL_TEXTURE0);
 			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 			glTexCoordPointer(3, GL_FLOAT, 0, p_uvs);
 	};
-// 	GLenum err = glGetError();
-// 	printf("error %d\n");
 
 	glDrawArrays( type, 0, p_points);
 
@@ -198,90 +192,7 @@ static void _draw_primitive(int p_points, const Vector3 *p_vertices, const Vecto
 	glDisableClientState(GL_NORMAL_ARRAY);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-// 	_rinfo.ci_draw_commands++;
 };
-
-
-
-void RasterizerPSP::_draw_gui_primitive(int p_points, const Vector2 *p_vertices, const Color *p_colors, const Vector2 *p_uvs) {
-
-	GLenum type = prim_type[p_points - 1];
-
-	glBindBuffer(GL_ARRAY_BUFFER, gui_quad_buffer);
-	float b[32];
-	int ofs = 0;
-// 	glEnableVertexAttribArray(VS::ARRAY_VERTEX);
-// 	glVertexAttribPointer(VS::ARRAY_VERTEX, 2, GL_FLOAT, false, sizeof(float) * 2, ((float *)0) + ofs);
-// 	for (int i = 0; i < p_points; i++) {
-// 		b[ofs++] = p_vertices[i].x;
-// 		b[ofs++] = p_vertices[i].y;
-// 	}
-//
-// 	if (p_colors) {
-//
-// 		glEnableVertexAttribArray(VS::ARRAY_COLOR);
-// 		glVertexAttribPointer(VS::ARRAY_COLOR, 4, GL_FLOAT, false, sizeof(float) * 4, ((float *)0) + ofs);
-// 		for (int i = 0; i < p_points; i++) {
-// 			b[ofs++] = p_colors[i].r;
-// 			b[ofs++] = p_colors[i].g;
-// 			b[ofs++] = p_colors[i].b;
-// 			b[ofs++] = p_colors[i].a;
-// 		}
-//
-// 	} else {
-// 		glDisableVertexAttribArray(VS::ARRAY_COLOR);
-// 	}
-//
-// 	if (p_uvs) {
-//
-// 		glEnableVertexAttribArray(VS::ARRAY_TEX_UV);
-// 		glVertexAttribPointer(VS::ARRAY_TEX_UV, 2, GL_FLOAT, false, sizeof(float) * 2, ((float *)0) + ofs);
-// 		for (int i = 0; i < p_points; i++) {
-// 			b[ofs++] = p_uvs[i].x;
-// 			b[ofs++] = p_uvs[i].y;
-// 		}
-//
-// 	} else {
-// // 		glDisableVertexAttribArray(VS::ARRAY_TEX_UV);
-// 	}
-
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, (GLvoid*)p_vertices);
-/*
-	if (p_normals) {
-
-			glEnableClientState(GL_NORMAL_ARRAY);
-			glNormalPointer(GL_FLOAT, 0, (GLvoid*)p_normals);
-	};*/
-
-	if (p_colors) {
-			glEnableClientState(GL_COLOR_ARRAY);
-			glColorPointer(4,GL_FLOAT, 0, p_colors);
-	};
-
-	if (p_uvs) {
-// 			printf("uv\n");
-
-			//glClientActiveTexture(GL_TEXTURE0);
-			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-			glTexCoordPointer(3, GL_FLOAT, 0, p_uvs);
-	};
-// 	GLenum err = glGetError();
-// 	printf("error %d\n");
-
-// 	glDrawArrays( type, 0, p_points);
-
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_NORMAL_ARRAY);
-	glDisableClientState(GL_COLOR_ARRAY);
-	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ofs * 4, &b[0]);
-	glDrawArrays(type, 0, p_points);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
 
 /* TEXTURE API */
 #define _EXT_COMPRESSED_RGB_PVRTC_4BPPV1_IMG                   0x8C00
@@ -977,6 +888,7 @@ RID RasterizerPSP::shader_create(VS::ShaderMode p_mode) {
 	shader->has_alpha=false;
 	shader->fragment_line=0;
 	shader->vertex_line=0;
+	shader->light_line=0;
 	RID rid = shader_owner.make_rid(shader);
 	shader_set_mode(rid,p_mode);
 //	_shader_make_dirty(shader);
@@ -1009,17 +921,20 @@ VS::ShaderMode RasterizerPSP::shader_get_mode(RID p_shader) const {
 
 void RasterizerPSP::shader_set_code(RID p_shader, const String& p_vertex, const String& p_fragment,const String& p_light,int p_vertex_ofs,int p_fragment_ofs,int p_light_ofs) {
 
+
 	Shader *shader=shader_owner.get(p_shader);
 	ERR_FAIL_COND(!shader);
 
 #ifdef DEBUG_ENABLED
-	if (shader->vertex_code==p_vertex && shader->fragment_code==p_fragment)
+	if (shader->vertex_code==p_vertex && shader->fragment_code==p_fragment && shader->light_code==p_light)
 		return;
 #endif
 	shader->fragment_code=p_fragment;
 	shader->vertex_code=p_vertex;
+	shader->light_code=p_light;
 	shader->fragment_line=p_fragment_ofs;
 	shader->vertex_line=p_vertex_ofs;
+	shader->light_line=p_light_ofs;
 
 }
 
@@ -1039,6 +954,13 @@ String RasterizerPSP::shader_get_fragment_code(RID p_shader) const {
 
 }
 
+String RasterizerPSP::shader_get_light_code(RID p_shader) const {
+
+	Shader *shader=shader_owner.get(p_shader);
+	ERR_FAIL_COND_V(!shader,String());
+	return shader->light_code;
+
+}
 
 void RasterizerPSP::shader_get_param_list(RID p_shader, List<PropertyInfo> *p_param_list) const {
 
@@ -1095,19 +1017,7 @@ void RasterizerPSP::shader_get_param_list(RID p_shader, List<PropertyInfo> *p_pa
 #endif
 
 }
-void RasterizerPSP::shader_set_default_texture_param(RID p_shader, const StringName& p_name, RID p_texture)
-{
-}
 
-RID RasterizerPSP::shader_get_default_texture_param(RID p_shader, const StringName& p_name) const {
-
-	return RID();
-}
-
-Variant RasterizerPSP::shader_get_default_param(RID p_shader, const StringName& p_name) {
-
-	return Variant();
-}
 /* COMMON MATERIAL API */
 
 
@@ -1196,39 +1106,21 @@ bool RasterizerPSP::material_get_flag(RID p_material,VS::MaterialFlag p_flag) co
 
 
 }
-// dep
-// void RasterizerPSP::material_set_hint(RID p_material, VS::MaterialHint p_hint,bool p_enabled) {
 
-// 	Material *material = material_owner.get(p_material);
-// 	ERR_FAIL_COND(!material);
-// 	ERR_FAIL_INDEX(p_hint,VS::MATERIAL_HINT_MAX);
-// 	material->hints[p_hint]=p_enabled;
-
-// }
-/*
-bool RasterizerPSP::material_get_hint(RID p_material,VS::MaterialHint p_hint) const {
-
-	Material *material = material_owner.get(p_material);
-	ERR_FAIL_COND_V(!material,false);
-	ERR_FAIL_INDEX_V(p_hint,VS::MATERIAL_HINT_MAX,false);
-	return material->hints[p_hint];
-
-}*/
-/*
-void RasterizerPSP::material_set_shade_model(RID p_material, VS::MaterialShadeModel p_model) {
+void RasterizerPSP::material_set_depth_draw_mode(RID p_material, VS::MaterialDepthDrawMode p_mode) {
 
 	Material *material = material_owner.get(p_material);
 	ERR_FAIL_COND(!material);
-	material->shade_model=p_model;
+	material->depth_draw_mode=p_mode;
+}
 
-};
+VS::MaterialDepthDrawMode RasterizerPSP::material_get_depth_draw_mode(RID p_material) const{
 
-VS::MaterialShadeModel RasterizerPSP::material_get_shade_model(RID p_material) const {
 
 	Material *material = material_owner.get(p_material);
-	ERR_FAIL_COND_V(!material,VS::MATERIAL_SHADE_MODEL_LAMBERT);
-	return material->shade_model;
-};*/
+	ERR_FAIL_COND_V(!material,VS::MATERIAL_DEPTH_DRAW_ALWAYS);
+	return material->depth_draw_mode;
+}
 
 
 void RasterizerPSP::material_set_blend_mode(RID p_material,VS::MaterialBlendMode p_mode) {
@@ -1320,21 +1212,7 @@ RID RasterizerPSP::fixed_material_get_texture(RID p_material,VS::FixedMaterialPa
 
 	return m->textures[p_parameter];
 }
-/*
-void RasterizerPSP::fixed_material_set_detail_blend_mode(RID p_material,VS::MaterialBlendMode p_mode) {
 
-	Material *m=material_owner.get( p_material );
-	ERR_FAIL_COND(!m);
-
-	m->detail_blend_mode = p_mode;
-}
-VS::MaterialBlendMode RasterizerPSP::fixed_material_get_detail_blend_mode(RID p_material) const {
-
-	Material *m=material_owner.get( p_material );
-	ERR_FAIL_COND_V(!m, VS::MATERIAL_BLEND_MODE_MIX);
-
-	return m->detail_blend_mode;
-}*/
 
 void RasterizerPSP::fixed_material_set_texcoord_mode(RID p_material,VS::FixedMaterialParam p_parameter, VS::FixedMaterialTexCoordMode p_mode) {
 
@@ -1638,7 +1516,6 @@ void RasterizerPSP::mesh_add_surface(RID p_mesh,VS::PrimitiveType p_primitive,co
 
 
 	/* create buffers!! */
-// #ifndef PSP_ENABLED
 	if (use_VBO) {
 		glGenBuffers(1,&surface->vertex_id);
 		ERR_FAIL_COND(surface->vertex_id==0);
@@ -1655,7 +1532,7 @@ void RasterizerPSP::mesh_add_surface(RID p_mesh,VS::PrimitiveType p_primitive,co
 
 		}
 	}
-// #endif
+
 	mesh->surfaces.push_back(surface);
 
 }
@@ -1728,12 +1605,29 @@ Error RasterizerPSP::_surface_set_arrays(Surface *p_surface, uint8_t *p_mem,uint
 
 				// setting vertices means regenerating the AABB
 
-				for (int i=0;i<p_surface->array_len;i++) {
+
+				if (p_surface->array[VS::ARRAY_NORMAL].datatype == GL_BYTE) {
+
+					for (int i = 0; i < p_surface->array_len; i++) {
+
+						GLbyte vector[4] = {
+							(GLbyte)CLAMP(src[i].x * 127, -128, 127),
+							(GLbyte)CLAMP(src[i].y * 127, -128, 127),
+							(GLbyte)CLAMP(src[i].z * 127, -128, 127),
+							0,
+						};
+
+						copymem(&p_mem[a.ofs + i * stride], vector, a.size);
+					}
+
+				} else {
+					for (int i = 0; i < p_surface->array_len; i++) {
 
 
-					GLfloat vector[3]={ src[i].x, src[i].y, src[i].z };
-					copymem(&p_mem[a.ofs+i*stride], vector, a.size);
+						GLfloat vector[3]={ src[i].x, src[i].y, src[i].z };
+						copymem(&p_mem[a.ofs+i*stride], vector, a.size);
 
+					}
 				}
 
 
@@ -1750,8 +1644,22 @@ Error RasterizerPSP::_surface_set_arrays(Surface *p_surface, uint8_t *p_mem,uint
 				DVector<real_t>::Read read = array.read();
 				const real_t* src = read.ptr();
 
-				for (int i=0;i<p_surface->array_len;i++) {
+				if (p_surface->array[VS::ARRAY_TANGENT].datatype == GL_BYTE) {
 
+					for (int i = 0; i < p_surface->array_len; i++) {
+
+						GLbyte xyzw[4] = {
+							(GLbyte)CLAMP(src[i * 4 + 0] * 127, -128, 127),
+							(GLbyte)CLAMP(src[i * 4 + 1] * 127, -128, 127),
+							(GLbyte)CLAMP(src[i * 4 + 2] * 127, -128, 127),
+							(GLbyte)CLAMP(src[i * 4 + 3] * 127, -128, 127)
+						};
+
+						copymem(&p_mem[a.ofs + i * stride], xyzw, a.size);
+					}
+
+				} else {
+					for (int i = 0; i < p_surface->array_len; i++) {
 					GLfloat xyzw[4]={
 						src[i*4+0],
 						src[i*4+1],
@@ -1762,6 +1670,7 @@ Error RasterizerPSP::_surface_set_arrays(Surface *p_surface, uint8_t *p_mem,uint
 					copymem(&p_mem[a.ofs+i*stride], xyzw, a.size);
 
 				}
+			}
 
 			} break;
 			case VS::ARRAY_COLOR: {
@@ -1812,13 +1721,21 @@ Error RasterizerPSP::_surface_set_arrays(Surface *p_surface, uint8_t *p_mem,uint
 				const Vector2 * src=read.ptr();
 				float scale=1.0;
 
-
+// 				if (p_surface->array[ai].datatype == _GL_HALF_FLOAT_OES) {
+//
+// 					for (int i = 0; i < p_surface->array_len; i++) {
+//
+// 						uint16_t uv[2] = { make_half_float(src[i].x), make_half_float(src[i].y) };
+// 						copymem(&p_mem[a.ofs + i * stride], uv, a.size);
+// 					}
+//
+// 				} else {
 				for (int i=0;i<p_surface->array_len;i++) {
 
 					GLfloat uv[2]={ src[i].x , src[i].y };
 
 					copymem(&p_mem[a.ofs+i*stride], uv, a.size);
-
+// 				}
 				}
 
 				if (p_main) {
@@ -2076,23 +1993,44 @@ int RasterizerPSP::mesh_get_surface_count(RID p_mesh) const {
 	return mesh->surfaces.size();
 }
 
-// AABB RasterizerPSP::mesh_get_aabb(RID p_mesh) const {
-//
-// 	Mesh *mesh = mesh_owner.get( p_mesh );
-// 	ERR_FAIL_COND_V(!mesh,AABB());
-//
-// 	AABB aabb;
-//
-// 	for (int i=0;i<mesh->surfaces.size();i++) {
-//
-// 		if (i==0)
-// 			aabb=mesh->surfaces[i]->aabb;
-// 		else
-// 			aabb.merge_with(mesh->surfaces[i]->aabb);
-// 	}
-//
-// 	return aabb;
-// }
+AABB RasterizerPSP::mesh_get_aabb(RID p_mesh,RID p_skeleton) const {
+
+	Mesh *mesh = mesh_owner.get( p_mesh );
+	ERR_FAIL_COND_V(!mesh,AABB());
+
+	if (mesh->custom_aabb!=AABB())
+		return mesh->custom_aabb;
+
+	AABB aabb;
+
+	for (int i=0;i<mesh->surfaces.size();i++) {
+
+		if (i==0)
+			aabb=mesh->surfaces[i]->aabb;
+		else
+			aabb.merge_with(mesh->surfaces[i]->aabb);
+	}
+
+	return aabb;
+}
+
+void RasterizerPSP::mesh_set_custom_aabb(RID p_mesh,const AABB& p_aabb) {
+
+	Mesh *mesh = mesh_owner.get( p_mesh );
+	ERR_FAIL_COND(!mesh);
+
+	mesh->custom_aabb=p_aabb;
+
+}
+
+AABB RasterizerPSP::mesh_get_custom_aabb(RID p_mesh) const {
+
+	const Mesh *mesh = mesh_owner.get( p_mesh );
+	ERR_FAIL_COND_V(!mesh,AABB());
+
+	return mesh->custom_aabb;
+}
+
 
 /* MULTIMESH API */
 
@@ -2240,6 +2178,74 @@ int RasterizerPSP::multimesh_get_visible_instances(RID p_multimesh) const {
 	MultiMesh *multimesh = multimesh_owner.get(p_multimesh);
 	ERR_FAIL_COND_V(!multimesh,-1);
 	return multimesh->visible;
+
+}
+
+/* IMMEDIATE API */
+
+
+RID RasterizerPSP::immediate_create() {
+
+	Immediate *im = memnew( Immediate );
+	return immediate_owner.make_rid(im);
+
+}
+
+void RasterizerPSP::immediate_begin(RID p_immediate, VS::PrimitiveType p_rimitive, RID p_texture){
+
+
+}
+void RasterizerPSP::immediate_vertex(RID p_immediate,const Vector3& p_vertex){
+
+
+}
+void RasterizerPSP::immediate_normal(RID p_immediate,const Vector3& p_normal){
+
+
+}
+void RasterizerPSP::immediate_tangent(RID p_immediate,const Plane& p_tangent){
+
+
+}
+void RasterizerPSP::immediate_color(RID p_immediate,const Color& p_color){
+
+
+}
+void RasterizerPSP::immediate_uv(RID p_immediate,const Vector2& tex_uv){
+
+
+}
+void RasterizerPSP::immediate_uv2(RID p_immediate,const Vector2& tex_uv){
+
+
+}
+
+void RasterizerPSP::immediate_end(RID p_immediate){
+
+
+}
+void RasterizerPSP::immediate_clear(RID p_immediate) {
+
+
+}
+
+AABB RasterizerPSP::immediate_get_aabb(RID p_immediate) const {
+
+	return AABB(Vector3(-1,-1,-1),Vector3(2,2,2));
+}
+
+void RasterizerPSP::immediate_set_material(RID p_immediate,RID p_material) {
+
+	Immediate *im = immediate_owner.get(p_immediate);
+	ERR_FAIL_COND(!im);
+	im->material=p_material;
+}
+
+RID RasterizerPSP::immediate_get_material(RID p_immediate) const {
+
+	const Immediate *im = immediate_owner.get(p_immediate);
+	ERR_FAIL_COND_V(!im,RID());
+	return im->material;
 
 }
 
@@ -2590,59 +2596,23 @@ int RasterizerPSP::skeleton_get_bone_count(RID p_skeleton) const {
 	ERR_FAIL_COND_V(!skeleton, -1);
 	return skeleton->bones.size();
 }
-// void RasterizerPSP::skeleton_bone_set_transform(RID p_skeleton,int p_bone, const Transform& p_transform) {
+void RasterizerPSP::skeleton_bone_set_transform(RID p_skeleton,int p_bone, const Transform& p_transform) {
 
-void RasterizerPSP::skeleton_bone_set_transform(RID p_skeleton, int p_bone, const Transform &p_transform) {
-
-	Skeleton *skeleton = skeleton_owner.get(p_skeleton);
+	Skeleton *skeleton = skeleton_owner.get( p_skeleton );
 	ERR_FAIL_COND(!skeleton);
-	ERR_FAIL_INDEX(p_bone, skeleton->bones.size());
+	ERR_FAIL_INDEX( p_bone, skeleton->bones.size() );
 
-	Skeleton::Bone &b = skeleton->bones[p_bone];
-
-	b.mtx[0][0] = p_transform.basis[0][0];
-	b.mtx[0][1] = p_transform.basis[1][0];
-	b.mtx[0][2] = p_transform.basis[2][0];
-	b.mtx[1][0] = p_transform.basis[0][1];
-	b.mtx[1][1] = p_transform.basis[1][1];
-	b.mtx[1][2] = p_transform.basis[2][1];
-	b.mtx[2][0] = p_transform.basis[0][2];
-	b.mtx[2][1] = p_transform.basis[1][2];
-	b.mtx[2][2] = p_transform.basis[2][2];
-	b.mtx[3][0] = p_transform.origin[0];
-	b.mtx[3][1] = p_transform.origin[1];
-	b.mtx[3][2] = p_transform.origin[2];
-
-	if (skeleton->tex_id) {
-		if (!skeleton->dirty_list.in_list()) {
-			_skeleton_dirty_list.add(&skeleton->dirty_list);
-		}
-	}
+	skeleton->bones[p_bone] = p_transform;
 }
 
-Transform RasterizerPSP::skeleton_bone_get_transform(RID p_skeleton, int p_bone) {
+Transform RasterizerPSP::skeleton_bone_get_transform(RID p_skeleton,int p_bone) {
 
-	Skeleton *skeleton = skeleton_owner.get(p_skeleton);
+	Skeleton *skeleton = skeleton_owner.get( p_skeleton );
 	ERR_FAIL_COND_V(!skeleton, Transform());
-	ERR_FAIL_INDEX_V(p_bone, skeleton->bones.size(), Transform());
+	ERR_FAIL_INDEX_V( p_bone, skeleton->bones.size(), Transform() );
 
-	const Skeleton::Bone &b = skeleton->bones[p_bone];
-
-	Transform t;
-	t.basis[0][0] = b.mtx[0][0];
-	t.basis[1][0] = b.mtx[0][1];
-	t.basis[2][0] = b.mtx[0][2];
-	t.basis[0][1] = b.mtx[1][0];
-	t.basis[1][1] = b.mtx[1][1];
-	t.basis[2][1] = b.mtx[1][2];
-	t.basis[0][2] = b.mtx[2][0];
-	t.basis[1][2] = b.mtx[2][1];
-	t.basis[2][2] = b.mtx[2][2];
-	t.origin[0] = b.mtx[3][0];
-	t.origin[1] = b.mtx[3][1];
-	t.origin[2] = b.mtx[3][2];
-
-	return t;
+	// something
+	return skeleton->bones[p_bone];
 }
 
 
@@ -2893,6 +2863,11 @@ int RasterizerPSP::light_instance_get_shadow_passes(RID p_light_instance) const 
 	return 0;
 }
 
+bool RasterizerPSP::light_instance_get_pssm_shadow_overlap(RID p_light_instance) const {
+
+	return false;
+}
+
 void RasterizerPSP::light_instance_set_custom_transform(RID p_light_instance, int p_index, const CameraMatrix& p_camera, const Transform& p_transform, float p_split_near,float p_split_far) {
 
 	LightInstance *lighti = light_instance_owner.get( p_light_instance );
@@ -2970,109 +2945,21 @@ bool RasterizerPSP::render_target_renedered_in_frame(RID p_render_target){
 
 void RasterizerPSP::begin_frame() {
 
-/*
+
 	window_size = Size2( OS::get_singleton()->get_video_mode().width, OS::get_singleton()->get_video_mode().height );
-	//print_line("begin frame - winsize: "+window_size);
+	print_line("begin frame - winsize: "+window_size);
 
 	double time = (OS::get_singleton()->get_ticks_usec()/1000); // get msec
 	time/=1000.0; // make secs
 	time_delta=time-last_time;
 	last_time=time;
 	frame++;
-	clear_viewport(Color(1,0,0.5));*/
+	clear_viewport(Color(1,0,0.5));
 
-// 	_rinfo.vertex_count=0;
-// 	_rinfo.object_count=0;
-// 	_rinfo.mat_change_count=0;
-// 	_rinfo.shader_change_count=0;
-
-
-
-
-// 	_update_framebuffer();
-
-	glDepthFunc(GL_LEQUAL);
-	glFrontFace(GL_CW);
-
-	window_size = Size2(OS::get_singleton()->get_video_mode().width, OS::get_singleton()->get_video_mode().height);
-
-	double time = (OS::get_singleton()->get_ticks_usec() / 1000); // get msec
-	time /= 1000.0; // make secs
-	if (frame != 0) {
-		time_delta = time_scale * (time - last_time);
-	} else {
-		time_delta = 0.0f;
-	}
-	scaled_time += time_delta;
-	last_time = time;
-	frame++;
-
-	_rinfo.vertex_count = 0;
-	_rinfo.object_count = 0;
-	_rinfo.mat_change_count = 0;
-	_rinfo.shader_change_count = 0;
-	_rinfo.ci_draw_commands = 0;
-	_rinfo.surface_count = 0;
-	_rinfo.draw_calls = 0;
-
-	_update_fixed_materials();
-// 	while (_shader_dirty_list.first()) {
-
-// 		_update_shader(_shader_dirty_list.first()->self());
-// 	}
-
-	while (_skeleton_dirty_list.first()) {
-
-		Skeleton *s = _skeleton_dirty_list.first()->self();
-
-		float *sk_float = (float *)skinned_buffer;
-		for (int i = 0; i < s->bones.size(); i++) {
-
-			float *m = &sk_float[i * 12];
-			const Skeleton::Bone &b = s->bones[i];
-			m[0] = b.mtx[0][0];
-			m[1] = b.mtx[1][0];
-			m[2] = b.mtx[2][0];
-			m[3] = b.mtx[3][0];
-
-			m[4] = b.mtx[0][1];
-			m[5] = b.mtx[1][1];
-			m[6] = b.mtx[2][1];
-			m[7] = b.mtx[3][1];
-
-			m[8] = b.mtx[0][2];
-			m[9] = b.mtx[1][2];
-			m[10] = b.mtx[2][2];
-			m[11] = b.mtx[3][2];
-		}
-
-// 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, s->tex_id);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, next_power_of_2(s->bones.size() * 3), 1, GL_RGBA, GL_FLOAT, sk_float);
-		_skeleton_dirty_list.remove(_skeleton_dirty_list.first());
-	}
-
-	while (_multimesh_dirty_list.first()) {
-
-		MultiMesh *s = _multimesh_dirty_list.first()->self();
-
-		float *sk_float = (float *)skinned_buffer;
-		for (int i = 0; i < s->elements.size(); i++) {
-
-			float *m = &sk_float[i * 16];
-			const float *im = s->elements[i].matrix;
-			for (int j = 0; j < 16; j++) {
-				m[j] = im[j];
-			}
-		}
-
-// 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, s->tex_id);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, s->tw, s->th, GL_RGBA, GL_FLOAT, sk_float);
-		_multimesh_dirty_list.remove(_multimesh_dirty_list.first());
-	}
-
-	draw_next_frame = false;
+	_rinfo.vertex_count=0;
+	_rinfo.object_count=0;
+	_rinfo.mat_change_count=0;
+	_rinfo.shader_change_count=0;
 
 
 //	material_shader.set_uniform_default(MaterialShaderGLES1::SCREENZ_SCALE, Math::fmod(time, 3600.0));
@@ -3103,16 +2990,28 @@ void RasterizerPSP::set_viewport(const VS::ViewportRect& p_viewport) {
 
 
 	viewport=p_viewport;
-	//print_line("viewport: "+itos(p_viewport.x)+","+itos(p_viewport.y)+","+itos(p_viewport.width)+","+itos(p_viewport.height));
+	print_line("viewport: "+itos(p_viewport.x)+","+itos(p_viewport.y)+","+itos(p_viewport.width)+","+itos(p_viewport.height));
 
 	glViewport( viewport.x, window_size.height-(viewport.height+viewport.y), viewport.width,viewport.height );
 }
 
-void RasterizerPSP::set_render_target(RID p_render_target,bool p_transparent_bg,bool p_vflip) {
+void RasterizerPSP::set_render_target(RID p_render_target, bool p_transparent_bg, bool p_vflip) {
 
 
 }
 
+void RasterizerPSP::set_camera(const Transform &p_world, const CameraMatrix &p_projection, bool p_ortho_hint) {
+
+	camera_transform = p_world;
+
+	camera_transform_inverse = camera_transform.inverse();
+	camera_projection = p_projection;
+	camera_plane = Plane(camera_transform.origin, -camera_transform.basis.get_axis(2));
+	camera_z_near = camera_projection.get_z_near();
+	camera_z_far = camera_projection.get_z_far();
+	camera_projection.get_viewport_size(camera_vp_size.x, camera_vp_size.y);
+// 	camera_ortho = p_ortho_hint;
+}
 
 void RasterizerPSP::begin_scene(RID p_viewport_data,RID p_env,VS::ScenarioDebugMode p_debug) {
 
@@ -3136,7 +3035,7 @@ void RasterizerPSP::begin_shadow_map( RID p_light_instance, int p_shadow_pass ) 
 
 }
 
-void RasterizerPSP::set_camera(const Transform &p_world, const CameraMatrix &p_projection, bool p_ortho_hint) {
+void RasterizerPSP::set_camera(const Transform& p_world,const CameraMatrix& p_projection) {
 
 	camera_transform=p_world;
 	camera_transform_inverse=camera_transform.inverse();
@@ -3375,7 +3274,7 @@ void RasterizerPSP::add_particles( const RID& p_particle_instance, const Instanc
 	ERR_FAIL_COND(!p);
 
 	_add_geometry(p,p_data,p,particles_instance);
-	draw_next_frame = true;
+
 }
 
 
@@ -3524,26 +3423,26 @@ void RasterizerPSP::_setup_material(const Geometry *p_geometry,const Material *p
 
 	}
 
-// 	bool current_depth_write=!p_material->hints[VS::MATERIAL_HINT_NO_DEPTH_DRAW];
-// 	bool current_depth_test=!p_material->flags[VS::MATERIAL_FLAG_ONTOP];
+	bool current_depth_write=p_material->depth_draw_mode!=VS::MATERIAL_DEPTH_DRAW_ALWAYS; //broken
+	bool current_depth_test=!p_material->flags[VS::MATERIAL_FLAG_ONTOP];
 
 
 	_setup_fixed_material(p_geometry,p_material);
 
-// 	if (current_depth_write!=depth_write) {
+	if (current_depth_write!=depth_write) {
 
-// 		depth_write=current_depth_write;
+		depth_write=current_depth_write;
 		glDepthMask(depth_write);
-// 	}
+	}
 
-// 	if (current_depth_test!=depth_test) {
+	if (current_depth_test!=depth_test) {
 
-// 		depth_test=current_depth_test;
-// 		if (depth_test)
+		depth_test=current_depth_test;
+		if (depth_test)
 			glEnable(GL_DEPTH_TEST);
-// 		else
-// 			glDisable(GL_DEPTH_TEST);
-// 	}
+		else
+			glDisable(GL_DEPTH_TEST);
+	}
 }
 /*
 static const MaterialShaderGLES1::Conditionals _gl_light_version[4][3]={
@@ -3589,15 +3488,15 @@ void RasterizerPSP::_setup_light(LightInstance* p_instance, int p_idx) {
 
 	glLightfv(glid , GL_DIFFUSE, diffuse_sdark);
 
-// 	Color amb_color = ld->colors[VS::LIGHT_COLOR_AMBIENT];
-// 	GLfloat amb_stexsize[4]={
-// 		amb_color.r,
-// 		amb_color.g,
-// 		amb_color.b,
-// 		1.0
-// 	};
+	Color amb_color = Color(0,0,0);
+	GLfloat amb_stexsize[4]={
+		amb_color.r,
+		amb_color.g,
+		amb_color.b,
+		1.0
+	};
 
-// 	glLightfv(glid , GL_AMBIENT, amb_stexsize );
+	glLightfv(glid , GL_AMBIENT, amb_stexsize );
 
 	Color spec_color = ld->colors[VS::LIGHT_COLOR_SPECULAR];
 	GLfloat spec_op[4]={
@@ -3768,7 +3667,7 @@ static const int gl_texcoord_index[VS::ARRAY_MAX-1] = {
 	-1, // ARRAY_WEIGHTS
 };
 
-/*
+
 Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material* p_material, const Skeleton *p_skeleton,const float *p_morphs) {
 
 
@@ -3807,12 +3706,12 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 			if (!use_VBO) {
 
 				base = surf->array_local;
- 				glBindBuffer(GL_ARRAY_BUFFER, 0);
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				bool can_copy_to_local=surf->local_stride * surf->array_len <= skinned_buffer_size;
 				if (!can_copy_to_local)
 					skeleton_valid=false;
 
-
+				/* compute morphs */
 
 				if (p_morphs && surf->morph_target_count && can_copy_to_local) {
 
@@ -3859,6 +3758,10 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 								} break;
 
 							} break;
+							case VS::ARRAY_COLOR: {
+
+									printf("ARRAY_COLOR\n");
+							} break;
 							case VS::ARRAY_TEX_UV:
 							case VS::ARRAY_TEX_UV2: {
 
@@ -3870,6 +3773,21 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 									dst[0]= src[0]*coef;
 									dst[1]= src[1]*coef;
 								} break;
+
+							} break;
+							case VS::ARRAY_BONES:
+							case VS::ARRAY_WEIGHTS: {
+								printf("ARRAY_COLOR2\n");
+// 								for (int k = 0; k < count; k++) {
+//
+// 									const float *src = (const float *)&surf->array_local[ofs + k * src_stride];
+// 									float *dst = (float *)&base[ofs + k * dst_stride];
+//
+// 									dst[0] = src[0];
+// 									dst[1] = src[1];
+// 									dst[2] = src[2];
+// 									dst[3] = src[3];
+// 								}
 
 							} break;
 						}
@@ -3907,6 +3825,20 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 										dst[1]+= src_morph[1]*w;
 										dst[2]+= src_morph[2]*w;
 									} break;
+
+								} break;
+								case VS::ARRAY_COLOR: {
+									printf("ARRAY_COLOR3\n");
+// 									for (int k = 0; k < count; k++) {
+//
+// 										const uint8_t *src = (const uint8_t *)&morph[ofs + k * src_stride];
+// 										uint8_t *dst = (uint8_t *)&base[ofs + k * dst_stride];
+//
+// 										dst[0] = (src[0] * wfp) >> 8;
+// 										dst[1] = (src[1] * wfp) >> 8;
+// 										dst[2] = (src[2] * wfp) >> 8;
+// 										dst[3] = (src[3] * wfp) >> 8;
+// 									}
 
 								} break;
 								case VS::ARRAY_TEX_UV:
@@ -4040,7 +3972,7 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 				if (ad.size==0 || i==VS::ARRAY_BONES || i==VS::ARRAY_WEIGHTS || gl_client_states[i]==0 ) {
 
 					if (gl_texcoord_index[i] != -1) {
-						//glClientActiveTexture(GL_TEXTURE0+gl_texcoord_index[i]);
+// 						glClientActiveTexture(GL_TEXTURE0+gl_texcoord_index[i]);
 					}
 
 					if (gl_client_states[i] != 0)
@@ -4053,7 +3985,7 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 				}
 
 				if (gl_texcoord_index[i] != -1) {
-					//glClientActiveTexture(GL_TEXTURE0+gl_texcoord_index[i]);
+// 					glClientActiveTexture(GL_TEXTURE0+gl_texcoord_index[i]);
 				}
 
 				glEnableClientState(gl_client_states[i]);
@@ -4064,7 +3996,7 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 
 					glVertexPointer(3,ad.datatype,stride,&base[ad.ofs]);
 
-				} break;
+				} break; /* fallthrough to normal */
 				case VS::ARRAY_NORMAL: {
 
 					glNormalPointer(ad.datatype,stride,&base[ad.ofs]);
@@ -4100,478 +4032,6 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 
 		default: break;
 
-	};
-
-	return OK;
-};
-*/
-template <bool USE_NORMAL, bool USE_TANGENT, bool INPLACE>
-void RasterizerPSP::_skeleton_xform(const uint8_t *p_src_array, int p_src_stride, uint8_t *p_dst_array, int p_dst_stride, int p_elements, const uint8_t *p_src_bones, const uint8_t *p_src_weights, const Skeleton::Bone *p_bone_xforms) {
-
-	uint32_t basesize = 3;
-	if (USE_NORMAL)
-		basesize += 3;
-	if (USE_TANGENT)
-		basesize += 4;
-
-	uint32_t extra = (p_dst_stride - basesize * 4);
-	const int dstvec_size = 3 + (USE_NORMAL ? 3 : 0) + (USE_TANGENT ? 4 : 0);
-	float dstcopy[dstvec_size];
-
-	for (int i = 0; i < p_elements; i++) {
-
-		uint32_t ss = p_src_stride * i;
-		uint32_t ds = p_dst_stride * i;
-		const uint16_t *bi = (const uint16_t *)&p_src_bones[ss];
-		const float *bw = (const float *)&p_src_weights[ss];
-		const float *src_vec = (const float *)&p_src_array[ss];
-		float *dst_vec;
-		if (INPLACE)
-			dst_vec = dstcopy;
-		else
-			dst_vec = (float *)&p_dst_array[ds];
-
-		dst_vec[0] = 0.0;
-		dst_vec[1] = 0.0;
-		dst_vec[2] = 0.0;
-		//conditionals simply removed by optimizer
-		if (USE_NORMAL) {
-
-			dst_vec[3] = 0.0;
-			dst_vec[4] = 0.0;
-			dst_vec[5] = 0.0;
-
-			if (USE_TANGENT) {
-
-				dst_vec[6] = 0.0;
-				dst_vec[7] = 0.0;
-				dst_vec[8] = 0.0;
-				dst_vec[9] = src_vec[9];
-			}
-		} else {
-
-			if (USE_TANGENT) {
-
-				dst_vec[3] = 0.0;
-				dst_vec[4] = 0.0;
-				dst_vec[5] = 0.0;
-				dst_vec[6] = src_vec[6];
-			}
-		}
-
-#define _XFORM_BONE(m_idx)                                                                     \
-	if (bw[m_idx] == 0)                                                                        \
-		goto end;                                                                              \
-	p_bone_xforms[bi[m_idx]].transform_add_mul3(&src_vec[0], &dst_vec[0], bw[m_idx]);          \
-	if (USE_NORMAL) {                                                                          \
-		p_bone_xforms[bi[m_idx]].transform3_add_mul3(&src_vec[3], &dst_vec[3], bw[m_idx]);     \
-		if (USE_TANGENT) {                                                                     \
-			p_bone_xforms[bi[m_idx]].transform3_add_mul3(&src_vec[6], &dst_vec[6], bw[m_idx]); \
-		}                                                                                      \
-	} else {                                                                                   \
-		if (USE_TANGENT) {                                                                     \
-			p_bone_xforms[bi[m_idx]].transform3_add_mul3(&src_vec[3], &dst_vec[3], bw[m_idx]); \
-		}                                                                                      \
-	}
-
-		_XFORM_BONE(0);
-		_XFORM_BONE(1);
-		_XFORM_BONE(2);
-		_XFORM_BONE(3);
-
-	end:
-
-		if (INPLACE) {
-
-			const uint8_t *esp = (const uint8_t *)dstcopy;
-			uint8_t *edp = (uint8_t *)&p_dst_array[ds];
-
-			for (uint32_t j = 0; j < dstvec_size * 4; j++) {
-
-				edp[j] = esp[j];
-			}
-
-		} else {
-			//copy extra stuff
-			const uint8_t *esp = (const uint8_t *)&src_vec[basesize];
-			uint8_t *edp = (uint8_t *)&dst_vec[basesize];
-
-			for (uint32_t j = 0; j < extra; j++) {
-
-				edp[j] = esp[j];
-			}
-		}
-	}
-}
-
-Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material *p_material, const Skeleton *p_skeleton, const float *p_morphs) {
-
-	switch (p_geometry->type) {
-
-		case Geometry::GEOMETRY_MULTISURFACE:
-		case Geometry::GEOMETRY_SURFACE: {
-
-			const Surface *surf = NULL;
-			if (p_geometry->type == Geometry::GEOMETRY_SURFACE)
-				surf = static_cast<const Surface *>(p_geometry);
-			else if (p_geometry->type == Geometry::GEOMETRY_MULTISURFACE)
-				surf = static_cast<const MultiMeshSurface *>(p_geometry)->surface;
-
-			if (surf->format != surf->configured_format) {
-				if (OS::get_singleton()->is_stdout_verbose()) {
-
-					print_line("has format: " + itos(surf->format));
-					print_line("configured format: " + itos(surf->configured_format));
-				}
-				ERR_EXPLAIN("Missing arrays (not set) in surface");
-			}
-			ERR_FAIL_COND_V(surf->format != surf->configured_format, ERR_UNCONFIGURED);
-			uint8_t *base = 0;
-			int stride = surf->stride;
-			bool use_VBO = (surf->array_local == 0);
-			_setup_geometry_vinfo = surf->array_len;
-
-			bool skeleton_valid = p_skeleton && (surf->format & VS::ARRAY_FORMAT_BONES) && (surf->format & VS::ARRAY_FORMAT_WEIGHTS) && !p_skeleton->bones.empty() && p_skeleton->bones.size() > surf->max_bone;
-			/*
-			if (surf->packed) {
-				float scales[4]={surf->vertex_scale,surf->uv_scale,surf->uv2_scale,0.0};
-				glVertexAttrib4fv( 7, scales );
-			} else {
-				glVertexAttrib4f( 7, 1,1,1,1 );
-			}*/
-
-			if (!use_VBO) {
-
-// 				DEBUG_TEST_ERROR("Draw NO VBO");
-
-				base = surf->array_local;
-				glBindBuffer(GL_ARRAY_BUFFER, 0);
-				bool can_copy_to_local = surf->local_stride * surf->array_len <= skinned_buffer_size;
-				if (p_morphs && surf->stride * surf->array_len > skinned_buffer_size)
-					can_copy_to_local = false;
-
-				if (!can_copy_to_local)
-					skeleton_valid = false;
-
-				/* compute morphs */
-
-				if (p_morphs && surf->morph_target_count && can_copy_to_local) {
-
-					base = skinned_buffer;
-					stride = surf->local_stride;
-
-					//copy all first
-					float coef = 1.0;
-
-					for (int i = 0; i < surf->morph_target_count; i++) {
-						if (surf->mesh->morph_target_mode == VS::MORPH_MODE_NORMALIZED)
-							coef -= p_morphs[i];
-						ERR_FAIL_COND_V(surf->morph_format != surf->morph_targets_local[i].configured_format, ERR_INVALID_DATA);
-					}
-
-					int16_t coeffp = CLAMP(coef * 255, 0, 255);
-
-					for (int i = 0; i < VS::ARRAY_MAX - 1; i++) {
-
-						const Surface::ArrayData &ad = surf->array[i];
-						if (ad.size == 0)
-							continue;
-
-						int ofs = ad.ofs;
-						int src_stride = surf->stride;
-						int dst_stride = skeleton_valid ? surf->stride : surf->local_stride;
-						int count = surf->array_len;
-
-						if (!skeleton_valid && i >= VS::ARRAY_MAX - 3)
-							break;
-
-						switch (i) {
-
-							case VS::ARRAY_VERTEX:
-							case VS::ARRAY_NORMAL:
-							case VS::ARRAY_TANGENT: {
-
-								for (int k = 0; k < count; k++) {
-
-									const float *src = (const float *)&surf->array_local[ofs + k * src_stride];
-									float *dst = (float *)&base[ofs + k * dst_stride];
-
-									dst[0] = src[0] * coef;
-									dst[1] = src[1] * coef;
-									dst[2] = src[2] * coef;
-								};
-
-							} break;
-							case VS::ARRAY_COLOR: {
-
-								for (int k = 0; k < count; k++) {
-
-									const uint8_t *src = (const uint8_t *)&surf->array_local[ofs + k * src_stride];
-									uint8_t *dst = (uint8_t *)&base[ofs + k * dst_stride];
-
-									dst[0] = (src[0] * coeffp) >> 8;
-									dst[1] = (src[1] * coeffp) >> 8;
-									dst[2] = (src[2] * coeffp) >> 8;
-									dst[3] = (src[3] * coeffp) >> 8;
-								}
-
-							} break;
-							case VS::ARRAY_TEX_UV:
-							case VS::ARRAY_TEX_UV2: {
-
-								for (int k = 0; k < count; k++) {
-
-									const float *src = (const float *)&surf->array_local[ofs + k * src_stride];
-									float *dst = (float *)&base[ofs + k * dst_stride];
-
-									dst[0] = src[0] * coef;
-									dst[1] = src[1] * coef;
-								}
-
-							} break;
-							case VS::ARRAY_BONES:
-							case VS::ARRAY_WEIGHTS: {
-
-								for (int k = 0; k < count; k++) {
-
-									const float *src = (const float *)&surf->array_local[ofs + k * src_stride];
-									float *dst = (float *)&base[ofs + k * dst_stride];
-
-									dst[0] = src[0];
-									dst[1] = src[1];
-									dst[2] = src[2];
-									dst[3] = src[3];
-								}
-
-							} break;
-						}
-					}
-
-					for (int j = 0; j < surf->morph_target_count; j++) {
-
-						for (int i = 0; i < VS::ARRAY_MAX - 3; i++) {
-
-							const Surface::ArrayData &ad = surf->array[i];
-							if (ad.size == 0)
-								continue;
-
-							int ofs = ad.ofs;
-							int src_stride = surf->local_stride;
-							int dst_stride = skeleton_valid ? surf->stride : surf->local_stride;
-							int count = surf->array_len;
-							const uint8_t *morph = surf->morph_targets_local[j].array;
-							float w = p_morphs[j];
-							int16_t wfp = CLAMP(w * 255, 0, 255);
-
-							switch (i) {
-
-								case VS::ARRAY_VERTEX:
-								case VS::ARRAY_NORMAL:
-								case VS::ARRAY_TANGENT: {
-
-									for (int k = 0; k < count; k++) {
-
-										const float *src_morph = (const float *)&morph[ofs + k * src_stride];
-										float *dst = (float *)&base[ofs + k * dst_stride];
-
-										dst[0] += src_morph[0] * w;
-										dst[1] += src_morph[1] * w;
-										dst[2] += src_morph[2] * w;
-									}
-
-								} break;
-								case VS::ARRAY_COLOR: {
-									for (int k = 0; k < count; k++) {
-
-										const uint8_t *src = (const uint8_t *)&morph[ofs + k * src_stride];
-										uint8_t *dst = (uint8_t *)&base[ofs + k * dst_stride];
-
-										dst[0] = (src[0] * wfp) >> 8;
-										dst[1] = (src[1] * wfp) >> 8;
-										dst[2] = (src[2] * wfp) >> 8;
-										dst[3] = (src[3] * wfp) >> 8;
-									}
-
-								} break;
-								case VS::ARRAY_TEX_UV:
-								case VS::ARRAY_TEX_UV2: {
-
-									for (int k = 0; k < count; k++) {
-
-										const float *src_morph = (const float *)&morph[ofs + k * src_stride];
-										float *dst = (float *)&base[ofs + k * dst_stride];
-
-										dst[0] += src_morph[0] * w;
-										dst[1] += src_morph[1] * w;
-									}
-
-								} break;
-							}
-						}
-					}
-
-					if (skeleton_valid) {
-
-						const uint8_t *src_weights = &surf->array_local[surf->array[VS::ARRAY_WEIGHTS].ofs];
-						const uint8_t *src_bones = &surf->array_local[surf->array[VS::ARRAY_BONES].ofs];
-						const Skeleton::Bone *skeleton = &p_skeleton->bones[0];
-
-						if (surf->format & VS::ARRAY_FORMAT_NORMAL && surf->format & VS::ARRAY_FORMAT_TANGENT)
-							_skeleton_xform<true, true, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
-						else if (surf->format & (VS::ARRAY_FORMAT_NORMAL))
-							_skeleton_xform<true, false, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
-						else if (surf->format & (VS::ARRAY_FORMAT_TANGENT))
-							_skeleton_xform<false, true, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
-						else
-							_skeleton_xform<false, false, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
-					}
-
-					stride = skeleton_valid ? surf->stride : surf->local_stride;
-
-#if 0
-					{
-						//in-place skeleton tansformation, only used for morphs, slow.
-						//should uptimize some day....
-
-						const uint8_t *src_weights=&surf->array_local[surf->array[VS::ARRAY_WEIGHTS].ofs];
-						const uint8_t *src_bones=&surf->array_local[surf->array[VS::ARRAY_BONES].ofs];
-						int src_stride = surf->stride;
-						int count = surf->array_len;
-						const Transform *skeleton = &p_skeleton->bones[0];
-
-						for(int i=0;i<VS::ARRAY_MAX-1;i++) {
-
-							const Surface::ArrayData& ad=surf->array[i];
-							if (ad.size==0)
-								continue;
-
-							int ofs = ad.ofs;
-
-
-							switch(i) {
-
-								case VS::ARRAY_VERTEX: {
-									for(int k=0;k<count;k++) {
-
-										float *ptr=  (float*)&base[ofs+k*stride];
-										const GLfloat* weights = reinterpret_cast<const GLfloat*>(&src_weights[k*src_stride]);
-										const GLfloat *bones = reinterpret_cast<const GLfloat*>(&src_bones[k*src_stride]);
-
-										Vector3 src( ptr[0], ptr[1], ptr[2] );
-										Vector3 dst;
-										for(int j=0;j<VS::ARRAY_WEIGHTS_SIZE;j++) {
-
-											float w = weights[j];
-											if (w==0)
-												break;
-
-											//print_line("accum "+itos(i)+" += "+rtos(Math::ftoi(bones[j]))+" * "+skeleton[ Math::ftoi(bones[j]) ]+" * "+rtos(w));
-											int bidx = Math::fast_ftoi(bones[j]);
-											dst+=skeleton[ bidx ].xform(src) * w;
-										}
-
-										ptr[0]=dst.x;
-										ptr[1]=dst.y;
-										ptr[2]=dst.z;
-
-									} break;
-
-								} break;
-								case VS::ARRAY_NORMAL:
-								case VS::ARRAY_TANGENT: {
-									for(int k=0;k<count;k++) {
-
-										float *ptr=  (float*)&base[ofs+k*stride];
-										const GLfloat* weights = reinterpret_cast<const GLfloat*>(&src_weights[k*src_stride]);
-										const GLfloat *bones = reinterpret_cast<const GLfloat*>(&src_bones[k*src_stride]);
-
-										Vector3 src( ptr[0], ptr[1], ptr[2] );
-										Vector3 dst;
-										for(int j=0;j<VS::ARRAY_WEIGHTS_SIZE;j++) {
-
-											float w = weights[j];
-											if (w==0)
-												break;
-
-											//print_line("accum "+itos(i)+" += "+rtos(Math::ftoi(bones[j]))+" * "+skeleton[ Math::ftoi(bones[j]) ]+" * "+rtos(w));
-											int bidx=Math::fast_ftoi(bones[j]);
-											dst+=skeleton[ bidx ].basis.xform(src) * w;
-										}
-
-										ptr[0]=dst.x;
-										ptr[1]=dst.y;
-										ptr[2]=dst.z;
-
-									} break;
-
-								} break;
-							}
-						}
-					}
-#endif
-
-				} else if (skeleton_valid) {
-
-					base = skinned_buffer;
-					//copy stuff and get it ready for the skeleton
-
-					int dst_stride = surf->stride - (surf->array[VS::ARRAY_BONES].size + surf->array[VS::ARRAY_WEIGHTS].size);
-					const uint8_t *src_weights = &surf->array_local[surf->array[VS::ARRAY_WEIGHTS].ofs];
-					const uint8_t *src_bones = &surf->array_local[surf->array[VS::ARRAY_BONES].ofs];
-					const Skeleton::Bone *skeleton = &p_skeleton->bones[0];
-
-					if (surf->format & VS::ARRAY_FORMAT_NORMAL && surf->format & VS::ARRAY_FORMAT_TANGENT)
-						_skeleton_xform<true, true, false>(surf->array_local, surf->stride, base, dst_stride, surf->array_len, src_bones, src_weights, skeleton);
-					else if (surf->format & (VS::ARRAY_FORMAT_NORMAL))
-						_skeleton_xform<true, false, false>(surf->array_local, surf->stride, base, dst_stride, surf->array_len, src_bones, src_weights, skeleton);
-					else if (surf->format & (VS::ARRAY_FORMAT_TANGENT))
-						_skeleton_xform<false, true, false>(surf->array_local, surf->stride, base, dst_stride, surf->array_len, src_bones, src_weights, skeleton);
-					else
-						_skeleton_xform<false, false, false>(surf->array_local, surf->stride, base, dst_stride, surf->array_len, src_bones, src_weights, skeleton);
-
-					stride = dst_stride;
-				}
-
-			} else {
-
-				glBindBuffer(GL_ARRAY_BUFFER, surf->vertex_id);
-			};
-
-			for (int i = 0; i < (VS::ARRAY_MAX - 1); i++) {
-
-				const Surface::ArrayData &ad = surf->array[i];
-
-				//				if (!gl_texcoord_shader[i])
-				//					continue;
-
-				if (ad.size == 0 || !ad.bind) {
-					glDisableClientState(GL_VERTEX_ARRAY);
-					if (i == VS::ARRAY_COLOR) {
-						printf("_set_glcoloro\n");
-// 						_set_glcoloro(Color(1, 1, 1, 1));
-					};
-					//print_line("disable: "+itos(i));
-					continue; // this one is disabled.
-				}
-
-				glEnableClientState(GL_VERTEX_ARRAY);
-				//				print_line("set: "+itos(i)+" - count: "+itos(ad.count)+" datatype: "+itos(ad.datatype)+" ofs: "+itos(ad.ofs)+" stride: "+itos(stride)+" total len: "+itos(surf->array_len));
-				glVertexPointer(ad.count, ad.datatype, stride, &base[ad.ofs]);
-			}
-#ifdef GLEW_ENABLED
-			//"desktop" opengl needs this.
-			if (surf->primitive == VS::PRIMITIVE_POINTS) {
-				glEnable(GL_POINT_SPRITE);
-				glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-
-			} else {
-				glDisable(GL_POINT_SPRITE);
-				glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
-			}
-#endif
-		} break;
-
-		default: break;
 	};
 
 	return OK;
@@ -4619,7 +4079,7 @@ void RasterizerPSP::_render(const Geometry *p_geometry,const Material *p_materia
 				if (s->format&VS::ARRAY_FORMAT_TEX_UV) {
 					float uvs=(1.0/32767.0)*s->uv_scale;
 					////glActiveTexture(GL_TEXTURE0);
-					//glClientActiveTexture(GL_TEXTURE0);
+// 					glClientActiveTexture(GL_TEXTURE0);
 					glMatrixMode(GL_TEXTURE);
 					glPushMatrix();
 					glScalef(uvs,uvs,uvs);
@@ -4633,13 +4093,13 @@ void RasterizerPSP::_render(const Geometry *p_geometry,const Material *p_materia
 
 				if (s->index_array_local) {
 
-// 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
 					glDrawElements(gl_primitive[s->primitive], s->index_array_len, (s->array_len>(1<<16))?GL_UNSIGNED_SHORT:GL_UNSIGNED_SHORT, s->index_array_local);
 
 				} else {
 				//	print_line("indices: "+itos(s->index_array_local) );
 
-// 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,s->index_id);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,s->index_id);
 					glDrawElements(gl_primitive[s->primitive],s->index_array_len, (s->array_len>(1<<16))?GL_UNSIGNED_SHORT:GL_UNSIGNED_SHORT,0);
 				}
 
@@ -4676,7 +4136,7 @@ void RasterizerPSP::_render(const Geometry *p_geometry,const Material *p_materia
 			if (s->index_array_len>0) {
 
 
- 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,s->index_id);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,s->index_id);
 				for(int i=0;i<element_count;i++) {
 					//glUniformMatrix4fv(material_shader.get_uniform_location(MaterialShaderGLES1::INSTANCE_TRANSFORM), 1, false, elements[i].matrix);
 					glDrawElements(gl_primitive[s->primitive],s->index_array_len, (s->array_len>(1<<16))?GL_UNSIGNED_SHORT:GL_UNSIGNED_SHORT,0);
@@ -4706,8 +4166,8 @@ void RasterizerPSP::_render(const Geometry *p_geometry,const Material *p_materia
 			pp.process(&particles->data,particles_instance->transform,td);
 			ERR_EXPLAIN("A parameter in the particle system is not correct.");
 			ERR_FAIL_COND(!pp.valid);
- 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0); //unbind
- 			glBindBuffer(GL_ARRAY_BUFFER,0);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0); //unbind
+			glBindBuffer(GL_ARRAY_BUFFER,0);
 
 
 			Transform camera;
@@ -5257,11 +4717,11 @@ void RasterizerPSP::end_frame() {
 void RasterizerPSP::reset_state() {
 
 
- 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0); //unbind
- 	glBindBuffer(GL_ARRAY_BUFFER,0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0); //unbind
+	glBindBuffer(GL_ARRAY_BUFFER,0);
 
 	//glActiveTexture(GL_TEXTURE0);
-	//glClientActiveTexture(GL_TEXTURE0);
+// 	glClientActiveTexture(GL_TEXTURE0);
 	glMatrixMode(GL_TEXTURE);
 	glLoadIdentity();
 	glMatrixMode(GL_PROJECTION);
@@ -5289,7 +4749,7 @@ _FORCE_INLINE_ static void _set_glcoloro(const Color& p_color,const float p_opac
 
 
 void RasterizerPSP::canvas_begin() {
-
+	print_line("canvas_begin");
 
 	reset_state();
 	canvas_opacity=1.0;
@@ -5297,13 +4757,21 @@ void RasterizerPSP::canvas_begin() {
 
 
 }
+
+void RasterizerPSP::canvas_disable_blending() {
+	print_line("canvas_disable_blending");
+
+	glDisable(GL_BLEND);
+}
+
 void RasterizerPSP::canvas_set_opacity(float p_opacity) {
+	print_line("canvas_set_opacity");
 
 	canvas_opacity = p_opacity;
 }
 
 void RasterizerPSP::canvas_set_blend_mode(VS::MaterialBlendMode p_mode) {
-
+	print_line("canvas_set_blend_mode");
 	switch(p_mode) {
 
 		 case VS::MATERIAL_BLEND_MODE_MIX: {
@@ -5327,6 +4795,10 @@ void RasterizerPSP::canvas_set_blend_mode(VS::MaterialBlendMode p_mode) {
 			glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
 		} break;
+		case VS::MATERIAL_BLEND_MODE_PREMULT_ALPHA: {
+			glBlendEquation(GL_FUNC_ADD);
+			glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		} break;
 
 	}
 
@@ -5334,7 +4806,7 @@ void RasterizerPSP::canvas_set_blend_mode(VS::MaterialBlendMode p_mode) {
 
 
 void RasterizerPSP::canvas_begin_rect(const Matrix32& p_transform) {
-
+	print_line("canvas_begin_rect");
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glScalef(2.0 / viewport.width, -2.0 / viewport.height, 0);
@@ -5346,7 +4818,7 @@ void RasterizerPSP::canvas_begin_rect(const Matrix32& p_transform) {
 }
 
 void RasterizerPSP::canvas_set_clip(bool p_clip, const Rect2& p_rect) {
-
+	print_line("canvas_set_clip");
 	if (p_clip) {
 
 		glEnable(GL_SCISSOR_TEST);
@@ -5364,62 +4836,130 @@ void RasterizerPSP::canvas_set_clip(bool p_clip, const Rect2& p_rect) {
 }
 
 void RasterizerPSP::canvas_end_rect() {
-
+	print_line("canvas_end_rect");
 	glPopMatrix();
 }
 
-RasterizerPSP::Texture *RasterizerPSP::_bind_canvas_texture(const RID &p_texture) {
-	glEnable(GL_TEXTURE_2D);
+void RasterizerPSP::canvas_draw_line(const Point2& p_from, const Point2& p_to,const Color& p_color,float p_width) {
+	print_line("canvas_draw_line");
+	glDisable(GL_TEXTURE_2D);
+	_set_glcoloro( p_color,canvas_opacity );
 
-	if (p_texture == canvas_tex) {
-		if (canvas_tex.is_valid()) {
-			Texture *texture = texture_owner.get(p_texture);
-			return texture;
-		}
-		return NULL;
+	Vector3 verts[2]={
+		Vector3(p_from.x,p_from.y,0),
+		Vector3(p_to.x,p_to.y,0)
+	};
+	Color colors[2]={
+		p_color,
+		p_color
+	};
+	colors[0].a*=canvas_opacity;
+	colors[1].a*=canvas_opacity;
+	glLineWidth(p_width);
+	_draw_primitive(2,verts,0,colors,0);
+
+}
+
+static void _draw_textured_quad(const Rect2& p_rect, const Rect2& p_src_region, const Size2& p_tex_size,bool p_flip_h=false,bool p_flip_v=false ) {
+	Vector3 texcoords[4]= {
+		Vector3( p_src_region.pos.x/p_tex_size.width,
+		p_src_region.pos.y/p_tex_size.height, -1),
+
+		Vector3((p_src_region.pos.x+p_src_region.size.width)/p_tex_size.width,
+		p_src_region.pos.y/p_tex_size.height, -1),
+
+		Vector3( (p_src_region.pos.x+p_src_region.size.width)/p_tex_size.width,
+		(p_src_region.pos.y+p_src_region.size.height)/p_tex_size.height, -1),
+
+		Vector3( p_src_region.pos.x/p_tex_size.width,
+		(p_src_region.pos.y+p_src_region.size.height)/p_tex_size.height, -1)
+	};
+
+
+	if (p_flip_h) {
+		SWAP( texcoords[0], texcoords[1] );
+		SWAP( texcoords[2], texcoords[3] );
+	}
+	if (p_flip_v) {
+		SWAP( texcoords[1], texcoords[2] );
+		SWAP( texcoords[0], texcoords[3] );
 	}
 
-// 	rebind_texpixel_size = false;
+	Vector3 coords[4]= {
+		Vector3( p_rect.pos.x, p_rect.pos.y, -1 ),
+		Vector3( p_rect.pos.x+p_rect.size.width, p_rect.pos.y, -1 ),
+		Vector3( p_rect.pos.x+p_rect.size.width, p_rect.pos.y+p_rect.size.height, -1 ),
+		Vector3( p_rect.pos.x,p_rect.pos.y+p_rect.size.height, -1 )
+	};
 
-	if (p_texture.is_valid()) {
 
-		Texture *texture = texture_owner.get(p_texture);
-		if (!texture) {
-			canvas_tex = RID();
-			glBindTexture(GL_TEXTURE_2D, white_tex);
+	_draw_primitive(4,coords,0,0,texcoords);
+}
 
-			return NULL;
-		}
+static void _draw_quad(const Rect2& p_rect) {
 
-// 		if (texture->render_target)
-// 			texture->render_target->last_pass = frame;
+	Vector3 coords[4]= {
+		Vector3( p_rect.pos.x,p_rect.pos.y, 0 ),
+		Vector3( p_rect.pos.x+p_rect.size.width,p_rect.pos.y, 0 ),
+		Vector3( p_rect.pos.x+p_rect.size.width,p_rect.pos.y+p_rect.size.height, 0 ),
+		Vector3( p_rect.pos.x,p_rect.pos.y+p_rect.size.height, 0 )
+	};
 
-		glBindTexture(GL_TEXTURE_2D, texture->tex_id);
-		canvas_tex = p_texture;
-// 		if (uses_texpixel_size) {
-// 			canvas_shader.set_uniform(CanvasShaderGLES2::TEXPIXEL_SIZE, Size2(1.0 / texture->width, 1.0 / texture->height));
-// 		}
-		return texture;
+	_draw_primitive(4,coords,0,0,0);
 
-	} else {
-
-		glBindTexture(GL_TEXTURE_2D, white_tex);
-		canvas_tex = p_texture;
-	}
-
-	return NULL;
 }
 
 
-template<bool use_normalmap>
+void RasterizerPSP::canvas_draw_rect(const Rect2& p_rect, int p_flags, const Rect2& p_source,RID p_texture,const Color& p_modulate) {
+	print_line("canvas_draw_rect");
+	_set_glcoloro( p_modulate,canvas_opacity );
+
+	print_line(p_rect);
+
+
+	if ( p_texture.is_valid() ) {
+
+		glEnable(GL_TEXTURE_2D);
+		Texture *texture = texture_owner.get( p_texture );
+		ERR_FAIL_COND(!texture);
+		//glActiveTexture(GL_TEXTURE0);
+		glBindTexture( GL_TEXTURE_2D,texture->tex_id );
+
+		if (!(p_flags&CANVAS_RECT_REGION)) {
+
+			Rect2 region = Rect2(0,0,texture->width,texture->height);
+			_draw_textured_quad(p_rect,region,region.size,p_flags&CANVAS_RECT_FLIP_H,p_flags&CANVAS_RECT_FLIP_V);
+
+		} else {
+
+
+			_draw_textured_quad(p_rect, p_source, Size2(texture->width,texture->height),p_flags&CANVAS_RECT_FLIP_H,p_flags&CANVAS_RECT_FLIP_V );
+
+		}
+	} else {
+
+		glDisable(GL_TEXTURE_2D);
+		_draw_quad( p_rect );
+
+	}
+}
+
+template <bool use_normalmap>
 void RasterizerPSP::_canvas_item_render_commands(CanvasItem *p_item, CanvasItem *current_clip, bool &reclip) {
 
 	int cc = p_item->commands.size();
 	CanvasItem::Command **commands = p_item->commands.ptr();
 
-	for (int i = 0; i < cc; i++) {
+// 	Matrix32 xform = p_transform * ci->xform;
 
+	for (int i = 0; i < cc; i++) {
 		CanvasItem::Command *c = commands[i];
+
+// 		CanvasItem::Command **commands = &cc->commands[0];
+
+
+
+
 
 		switch (c->type) {
 			case CanvasItem::Command::TYPE_LINE: {
@@ -5430,31 +4970,10 @@ void RasterizerPSP::_canvas_item_render_commands(CanvasItem *p_item, CanvasItem 
 			case CanvasItem::Command::TYPE_RECT: {
 
 				CanvasItem::CommandRect *rect = static_cast<CanvasItem::CommandRect *>(c);
-//						canvas_draw_rect(rect->rect,rect->region,rect->source,rect->flags&CanvasItem::CommandRect::FLAG_TILE,rect->flags&CanvasItem::CommandRect::FLAG_FLIP_H,rect->flags&CanvasItem::CommandRect::FLAG_FLIP_V,rect->texture,rect->modulate);
-#if 0
-				int flags=0;
-
-				if (rect->flags&CanvasItem::CommandRect::FLAG_REGION) {
-					flags|=Rasterizer::CANVAS_RECT_REGION;
-				}
-				if (rect->flags&CanvasItem::CommandRect::FLAG_TILE) {
-					flags|=Rasterizer::CANVAS_RECT_TILE;
-				}
-				if (rect->flags&CanvasItem::CommandRect::FLAG_FLIP_H) {
-
-					flags|=Rasterizer::CANVAS_RECT_FLIP_H;
-				}
-				if (rect->flags&CanvasItem::CommandRect::FLAG_FLIP_V) {
-
-					flags|=Rasterizer::CANVAS_RECT_FLIP_V;
-				}
-#else
 
 				int flags = rect->flags;
-#endif
 // 				if (use_normalmap)
 // 					_canvas_normal_set_flip(Vector2((flags & CANVAS_RECT_FLIP_H) ? -1 : 1, (flags & CANVAS_RECT_FLIP_V) ? -1 : 1));
-// 				printf("canvas_draw_rect\n");
 				canvas_draw_rect(rect->rect, flags, rect->source, rect->texture, rect->modulate);
 
 			} break;
@@ -5540,15 +5059,15 @@ void RasterizerPSP::_canvas_item_render_commands(CanvasItem *p_item, CanvasItem 
 							int h;
 
 // 							if (current_rt) {
-								x = current_clip->final_clip_rect.pos.x;
-								y = current_clip->final_clip_rect.pos.y;
-								w = current_clip->final_clip_rect.size.x;
-								h = current_clip->final_clip_rect.size.y;
-// 							} else {
 // 								x = current_clip->final_clip_rect.pos.x;
-// 								y = window_size.height - (current_clip->final_clip_rect.pos.y + current_clip->final_clip_rect.size.y);
+// 								y = current_clip->final_clip_rect.pos.y;
 // 								w = current_clip->final_clip_rect.size.x;
 // 								h = current_clip->final_clip_rect.size.y;
+// 							} else {
+								x = current_clip->final_clip_rect.pos.x;
+								y = window_size.height - (current_clip->final_clip_rect.pos.y + current_clip->final_clip_rect.size.y);
+								w = current_clip->final_clip_rect.size.x;
+								h = current_clip->final_clip_rect.size.y;
 // 							}
 
 							glScissor(x, y, w, h);
@@ -5564,15 +5083,14 @@ void RasterizerPSP::_canvas_item_render_commands(CanvasItem *p_item, CanvasItem 
 }
 
 
-void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list,int p_z,const Color& p_modulate,CanvasLight *p_light) {
-
-
+void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list, int p_z, const Color &p_modulate, CanvasLight *p_light) {
+	print_line("canvas_render_items");
 	CanvasItem *current_clip = NULL;
-	Shader *shader_cache = NULL;
+// 	Shader *shader_cache = NULL;
 
 	bool rebind_shader = true;
 
-	canvas_opacity = 1.0;
+// 	canvas_opacity = 1.0;
 // 	canvas_use_modulate = p_modulate != Color(1, 1, 1, 1);
 // 	canvas_modulate = p_modulate;
 // 	canvas_shader.set_conditional(CanvasShaderGLES2::USE_MODULATE, canvas_use_modulate);
@@ -5581,31 +5099,24 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list,int p_z,const Co
 	bool reset_modulate = false;
 	bool prev_distance_field = false;
 
+	canvas_begin();
+
+	if (p_item_list->clip) {
+			canvas_set_clip(true,p_item_list->get_rect());
+	}
+
 	while (p_item_list) {
 
 		CanvasItem *ci = p_item_list;
 
+		canvas_begin_rect(p_item_list->xform);
+// 		canvas_set_opacity( opacity * ci->self_opacity );
+// 		canvas_set_blend_mode( ci->blend_mode );
+
+
+
 		if (ci->vp_render) {
-			if (draw_viewport_func) {
-				draw_viewport_func(ci->vp_render->owner, ci->vp_render->udata, ci->vp_render->rect);
-			}
-			memdelete(ci->vp_render);
-			ci->vp_render = NULL;
-// 			canvas_last_material = NULL;
-// 			canvas_use_modulate = p_modulate != Color(1, 1, 1, 1);
-// 			canvas_modulate = p_modulate;
-// 			canvas_shader.set_conditional(CanvasShaderGLES2::USE_MODULATE, canvas_use_modulate);
-// 			canvas_shader.set_conditional(CanvasShaderGLES2::USE_DISTANCE_FIELD, false);
-			prev_distance_field = false;
-			rebind_shader = true;
-			reset_modulate = true;
-		}
-
-		if (prev_distance_field != ci->distance_field) {
-
-// 			canvas_shader.set_conditional(CanvasShaderGLES2::USE_DISTANCE_FIELD, ci->distance_field);
-			prev_distance_field = ci->distance_field;
-			rebind_shader = true;
+			print_line("vp-render");
 		}
 
 		if (current_clip != ci->final_clip_owner) {
@@ -5629,17 +5140,11 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list,int p_z,const Co
 				int w;
 				int h;
 
-// 				if (current_rt) {
 					x = current_clip->final_clip_rect.pos.x;
-					y = current_clip->final_clip_rect.pos.y;
+					y = window_size.height - (current_clip->final_clip_rect.pos.y + current_clip->final_clip_rect.size.y);
 					w = current_clip->final_clip_rect.size.x;
 					h = current_clip->final_clip_rect.size.y;
-// 				} else {
-// 					x = current_clip->final_clip_rect.pos.x;
-// 					y = window_size.height - (current_clip->final_clip_rect.pos.y + current_clip->final_clip_rect.size.y);
-// 					w = current_clip->final_clip_rect.size.x;
-// 					h = current_clip->final_clip_rect.size.y;
-// 				}
+
 
 				glScissor(x, y, w, h);
 
@@ -5649,83 +5154,11 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list,int p_z,const Co
 			}
 		}
 
-		if (ci->copy_back_buffer && framebuffer.active) {
 
-			Rect2 rect;
-			int x, y;
-
-			if (ci->copy_back_buffer->full) {
-
-				x = viewport.x;
-				y = window_size.height - (viewport.height + viewport.y);
-			} else {
-				x = viewport.x + ci->copy_back_buffer->screen_rect.pos.x;
-				y = window_size.height - (viewport.y + ci->copy_back_buffer->screen_rect.pos.y + ci->copy_back_buffer->screen_rect.size.y);
-			}
-// 			glActiveTexture(GL_TEXTURE0 + max_texture_units - 1);
-// 			glBindTexture(GL_TEXTURE_2D, framebuffer.sample_color);
-
-// 			if (current_rt) {
-// 				glCopyTexSubImage2D(GL_TEXTURE_2D, 0, viewport.x, viewport.y, viewport.x, viewport.y, viewport.width, viewport.height);
-				//window_size.height-(viewport.height+viewport.y)
-// 			} else {
-// 				glCopyTexSubImage2D(GL_TEXTURE_2D, 0, x, y, x, y, viewport.width, viewport.height);
-// 			}
-
-// 			canvas_texscreen_used = true;
-// 			glActiveTexture(GL_TEXTURE0);
-		}
 
 		//begin rect
 		CanvasItem *material_owner = ci->material_owner ? ci->material_owner : ci;
 		CanvasItemMaterial *material = material_owner->material;
-
-		/*if (material != canvas_last_material || rebind_shader) {
-
-			Shader *shader = NULL;
-			if (material && material->shader.is_valid()) {
-				shader = shader_owner.get(material->shader);
-				if (shader && !shader->valid) {
-					shader = NULL;
-				}
-			}
-
-			shader_cache = shader;
-
-// 			if (shader) {
-// 				canvas_shader.set_custom_shader(shader->custom_code_id);
-// 				_canvas_item_setup_shader_params(material, shader);
-// 			} else {
-				shader_cache = NULL;
-// 				canvas_shader.set_custom_shader(0);
-// 				canvas_shader.bind();
-				uses_texpixel_size = false;
-// 			}
-
-// 			canvas_shader.set_uniform(CanvasShaderGLES2::PROJECTION_MATRIX, canvas_transform);
-// 			if (canvas_use_modulate)
-// 				reset_modulate = true;
-// 			canvas_last_material = material;
-			rebind_shader = false;
-		}*/
-
-// 		if (material && shader_cache) {
-
-// 			_canvas_item_setup_shader_uniforms(material, shader_cache);
-// 		}
-
-		bool unshaded = (material && material->shading_mode == VS::CANVAS_ITEM_SHADING_UNSHADED) || ci->blend_mode != VS::MATERIAL_BLEND_MODE_MIX;
-
-		if (unshaded) {
-// 			canvas_shader.set_uniform(CanvasShaderGLES2::MODULATE, Color(1, 1, 1, 1));
-			reset_modulate = true;
-		} else if (reset_modulate) {
-// 			canvas_shader.set_uniform(CanvasShaderGLES2::MODULATE, canvas_modulate);
-			reset_modulate = false;
-		}
-
-// 		canvas_shader.set_uniform(CanvasShaderGLES2::MODELVIEW_MATRIX, ci->final_transform);
-// 		canvas_shader.set_uniform(CanvasShaderGLES2::EXTRA_MATRIX, Matrix32());
 
 		bool reclip = false;
 
@@ -5768,10 +5201,10 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list,int p_z,const Co
 
 		canvas_opacity = ci->final_opacity;
 
-		if (unshaded || (p_modulate.a > 0.001 && (!material || material->shading_mode != VS::CANVAS_ITEM_SHADING_ONLY_LIGHT) && !ci->light_masked))
+		if ((p_modulate.a > 0.001 && (!material || material->shading_mode != VS::CANVAS_ITEM_SHADING_ONLY_LIGHT) && !ci->light_masked))
 			_canvas_item_render_commands<false>(ci, current_clip, reclip);
 
-		if (p_light && !unshaded) {
+		/*if (canvas_blend_mode == VS::MATERIAL_BLEND_MODE_MIX && p_light) {
 
 			CanvasLight *light = p_light;
 			bool light_used = false;
@@ -5807,101 +5240,21 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list,int p_z,const Co
 						}
 					}
 
-					if (!light_used) {
 
-// 						canvas_shader.set_conditional(CanvasShaderGLES2::USE_LIGHTING, true);
-// 						canvas_shader.set_conditional(CanvasShaderGLES2::USE_MODULATE, false);
-						light_used = true;
-// 						normal_flip = Vector2(1, 1);
-					}
+// 					bool has_shadow = light->shadow_buffer.is_valid() && ci->light_mask & light->item_shadow_mask;
 
-					bool has_shadow = light->shadow_buffer.is_valid() && ci->light_mask & light->item_shadow_mask;
 
-// 					canvas_shader.set_conditional(CanvasShaderGLES2::USE_SHADOWS, has_shadow);
 
 // 					bool light_rebind = canvas_shader.bind();
 
-// 					if (light_rebind) {
-//
-// 						if (material && shader_cache) {
-// 							_canvas_item_setup_shader_params(material, shader_cache);
-// 							_canvas_item_setup_shader_uniforms(material, shader_cache);
-// 						}
-//
-// 						canvas_shader.set_uniform(CanvasShaderGLES2::MODELVIEW_MATRIX, ci->final_transform);
-// 						canvas_shader.set_uniform(CanvasShaderGLES2::EXTRA_MATRIX, Matrix32());
-// 						canvas_shader.set_uniform(CanvasShaderGLES2::PROJECTION_MATRIX, canvas_transform);
-// 						if (canvas_use_modulate)
-// 							canvas_shader.set_uniform(CanvasShaderGLES2::MODULATE, canvas_modulate);
-// 						canvas_shader.set_uniform(CanvasShaderGLES2::NORMAL_FLIP, Vector2(1, 1));
-// 						canvas_shader.set_uniform(CanvasShaderGLES2::SHADOWPIXEL_SIZE, 1.0 / light->shadow_buffer_size);
-// 					}
-//
-// 					canvas_shader.set_uniform(CanvasShaderGLES2::LIGHT_MATRIX, light->light_shader_xform);
-// 					canvas_shader.set_uniform(CanvasShaderGLES2::LIGHT_POS, light->light_shader_pos);
-// 					canvas_shader.set_uniform(CanvasShaderGLES2::LIGHT_COLOR, Color(light->color.r * light->energy, light->color.g * light->energy, light->color.b * light->energy, light->color.a));
-// 					canvas_shader.set_uniform(CanvasShaderGLES2::LIGHT_HEIGHT, light->height);
-// 					canvas_shader.set_uniform(CanvasShaderGLES2::LIGHT_LOCAL_MATRIX, light->xform_cache.affine_inverse());
-// 					canvas_shader.set_uniform(CanvasShaderGLES2::LIGHT_OUTSIDE_ALPHA, light->mode == VS::CANVAS_LIGHT_MODE_MASK ? 1.0 : 0.0);
-//
-// 					if (has_shadow) {
-//
-// 						CanvasLightShadow *cls = canvas_light_shadow_owner.get(light->shadow_buffer);
-// 						glActiveTexture(GL_TEXTURE0 + max_texture_units - 3);
-// 						if (read_depth_supported)
-// 							glBindTexture(GL_TEXTURE_2D, cls->depth);
-// 						else
-// 							glBindTexture(GL_TEXTURE_2D, cls->rgba);
-//
-// 						canvas_shader.set_uniform(CanvasShaderGLES2::SHADOW_TEXTURE, max_texture_units - 3);
-// 						canvas_shader.set_uniform(CanvasShaderGLES2::SHADOW_MATRIX, light->shadow_matrix_cache);
-// 						canvas_shader.set_uniform(CanvasShaderGLES2::SHADOW_ESM_MULTIPLIER, light->shadow_esm_mult);
-// 						canvas_shader.set_uniform(CanvasShaderGLES2::LIGHT_SHADOW_COLOR, light->shadow_color);
-// 					}
 
-// 					glActiveTexture(GL_TEXTURE0 + max_texture_units - 2);
-// 					canvas_shader.set_uniform(CanvasShaderGLES2::LIGHT_TEXTURE, max_texture_units - 2);
-					Texture *t = texture_owner.get(light->texture);
-					if (!t) {
-						glBindTexture(GL_TEXTURE_2D, white_tex);
-					} else {
-
-						glBindTexture(t->target, t->tex_id);
-					}
-
-// 					glActiveTexture(GL_TEXTURE0);
 					_canvas_item_render_commands<true>(ci, current_clip, reclip); //redraw using light
 				}
 
 				light = light->next_ptr;
 			}
 
-			if (light_used) {
-
-// 				canvas_shader.set_conditional(CanvasShaderGLES2::USE_LIGHTING, false);
-// 				canvas_shader.set_conditional(CanvasShaderGLES2::USE_MODULATE, canvas_use_modulate);
-// 				canvas_shader.set_conditional(CanvasShaderGLES2::USE_SHADOWS, false);
-
-// 				canvas_shader.bind();
-
-// 				if (material && shader_cache) {
-// 					_canvas_item_setup_shader_params(material, shader_cache);
-// 					_canvas_item_setup_shader_uniforms(material, shader_cache);
-// 				}
-
-// 				canvas_shader.set_uniform(CanvasShaderGLES2::MODELVIEW_MATRIX, ci->final_transform);
-// 				canvas_shader.set_uniform(CanvasShaderGLES2::EXTRA_MATRIX, Matrix32());
-// 				if (canvas_use_modulate)
-// 					canvas_shader.set_uniform(CanvasShaderGLES2::MODULATE, canvas_modulate);
-
-				glBlendEquation(GL_FUNC_ADD);
-// 				if (current_rt && current_rt_transparent) {
-// 					glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-// 				} else {
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-// 				}
-			}
-		}
+		}*/
 
 		if (reclip) {
 
@@ -5915,252 +5268,31 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list,int p_z,const Co
 			int h;
 
 // 			if (current_rt) {
-				x = current_clip->final_clip_rect.pos.x;
- 				y = current_clip->final_clip_rect.pos.y;
- 				w = current_clip->final_clip_rect.size.x;
- 				h = current_clip->final_clip_rect.size.y;
-// 			} else {
 // 				x = current_clip->final_clip_rect.pos.x;
-// 				y = window_size.height - (current_clip->final_clip_rect.pos.y + current_clip->final_clip_rect.size.y);
+// 				y = current_clip->final_clip_rect.pos.y;
 // 				w = current_clip->final_clip_rect.size.x;
 // 				h = current_clip->final_clip_rect.size.y;
+// 			} else {
+				x = current_clip->final_clip_rect.pos.x;
+				y = window_size.height - (current_clip->final_clip_rect.pos.y + current_clip->final_clip_rect.size.y);
+				w = current_clip->final_clip_rect.size.x;
+				h = current_clip->final_clip_rect.size.y;
 // 			}
 
 			glScissor(x, y, w, h);
 		}
 
 		p_item_list = p_item_list->next;
+		canvas_end_rect();
 	}
 
-// 	if (current_clip) {
+	if (current_clip) {
 		glDisable(GL_SCISSOR_TEST);
-// 	}
-}
-
-/*
-void RasterizerPSP::canvas_draw_line(const Point2& p_from, const Point2& p_to,const Color& p_color,float p_width) {
-
-	glDisable(GL_TEXTURE_2D);
-	_set_glcoloro( p_color,canvas_opacity );
-
-	Vector3 verts[2]={
-		Vector3(p_from.x,p_from.y,0),
-		Vector3(p_to.x,p_to.y,0)
-	};
-	Color colors[2]={
-		p_color,
-		p_color
-	};
-	colors[0].a*=canvas_opacity;
-	colors[1].a*=canvas_opacity;
-	glLineWidth(p_width);
-	_draw_primitive(2,verts,0,colors,0);
-}*/
-
-void RasterizerPSP::canvas_draw_line(const Point2 &p_from, const Point2 &p_to, const Color &p_color, float p_width) {
-
-	_bind_canvas_texture(RID());
-	Color c = p_color;
-	c.a *= canvas_opacity;
-	_set_glcoloro(c, c.a);
-
-	Vector3 verts[2] = {
-		Vector3(p_from.x, p_from.y, 0),
-		Vector3(p_to.x, p_to.y, 0)
-	};
-
-	glLineWidth(p_width);
-	_draw_primitive(2, verts, 0, 0, 0);
-	_rinfo.ci_draw_commands++;
-}
-
-
-void RasterizerPSP::_draw_textured_quad(const Rect2& p_rect, const Rect2& p_src_region, const Size2& p_tex_size,bool p_flip_h ,bool p_flip_v ,bool p_transpose) {
-
-
-	Vector3 texcoords[4]= {
-		Vector3( p_src_region.pos.x/p_tex_size.width,
-		p_src_region.pos.y/p_tex_size.height, 0),
-
-		Vector3((p_src_region.pos.x+p_src_region.size.width)/p_tex_size.width,
-		p_src_region.pos.y/p_tex_size.height, 0),
-
-		Vector3( (p_src_region.pos.x+p_src_region.size.width)/p_tex_size.width,
-		(p_src_region.pos.y+p_src_region.size.height)/p_tex_size.height, 0),
-
-		Vector3( p_src_region.pos.x/p_tex_size.width,
-		(p_src_region.pos.y+p_src_region.size.height)/p_tex_size.height, 0)
-	};
-
-
-	if (p_flip_h) {
-		SWAP( texcoords[0], texcoords[1] );
-		SWAP( texcoords[2], texcoords[3] );
 	}
-	if (p_flip_v) {
-		SWAP( texcoords[1], texcoords[2] );
-		SWAP( texcoords[0], texcoords[3] );
-	}
-
-	Vector3 coords[4]= {
-		Vector3( p_rect.pos.x, p_rect.pos.y, 0 ),
-		Vector3( p_rect.pos.x+p_rect.size.width, p_rect.pos.y, 0 ),
-		Vector3( p_rect.pos.x+p_rect.size.width, p_rect.pos.y+p_rect.size.height, 0 ),
-		Vector3( p_rect.pos.x,p_rect.pos.y+p_rect.size.height, 0 )
-	};
-
-	_draw_primitive(4,coords,0,0,texcoords);
-}
-/*
-void RasterizerPSP::_draw_textured_quad(const Rect2 &p_rect, const Rect2 &p_src_region, const Size2 &p_tex_size, bool p_h_flip, bool p_v_flip, bool p_transpose) {
-
-	Vector2 texcoords[4] = {
-		Vector2(p_src_region.pos.x / p_tex_size.width,
-				p_src_region.pos.y / p_tex_size.height),
-
-		Vector2((p_src_region.pos.x + p_src_region.size.width) / p_tex_size.width,
-				p_src_region.pos.y / p_tex_size.height),
-
-		Vector2((p_src_region.pos.x + p_src_region.size.width) / p_tex_size.width,
-				(p_src_region.pos.y + p_src_region.size.height) / p_tex_size.height),
-
-		Vector2(p_src_region.pos.x / p_tex_size.width,
-				(p_src_region.pos.y + p_src_region.size.height) / p_tex_size.height)
-	};
-
-	if (p_transpose) {
-		SWAP(texcoords[1], texcoords[3]);
-	}
-	if (p_h_flip) {
-		SWAP(texcoords[0], texcoords[1]);
-		SWAP(texcoords[2], texcoords[3]);
-	}
-	if (p_v_flip) {
-		SWAP(texcoords[1], texcoords[2]);
-		SWAP(texcoords[0], texcoords[3]);
-	}
-
-	Vector2 coords[4] = {
-		Vector2(p_rect.pos.x, p_rect.pos.y),
-		Vector2(p_rect.pos.x + p_rect.size.width, p_rect.pos.y),
-		Vector2(p_rect.pos.x + p_rect.size.width, p_rect.pos.y + p_rect.size.height),
-		Vector2(p_rect.pos.x, p_rect.pos.y + p_rect.size.height)
-	};
-
-	_draw_gui_primitive(4, coords, 0, texcoords);
-// 	_rinfo.ci_draw_commands++;
-}
-*/
-static void _draw_quad(const Rect2& p_rect) {
-
-	Vector3 coords[4]= {
-		Vector3( p_rect.pos.x,p_rect.pos.y, 0 ),
-		Vector3( p_rect.pos.x+p_rect.size.width,p_rect.pos.y, 0 ),
-		Vector3( p_rect.pos.x+p_rect.size.width,p_rect.pos.y+p_rect.size.height, 0 ),
-		Vector3( p_rect.pos.x,p_rect.pos.y+p_rect.size.height, 0 )
-	};
-
-	_draw_primitive(4,coords,0,0,0);
-
 }
 
-void RasterizerPSP::canvas_disable_blending() {
-	glDisable(GL_BLEND);
-}
-
-
-void RasterizerPSP::canvas_draw_rect(const Rect2 &p_rect, int p_flags, const Rect2 &p_source, RID p_texture, const Color &p_modulate) {
-
-	Color m = p_modulate;
-// 	m.a *= canvas_opacity;
-	_set_glcoloro(m,canvas_opacity);
-// 	glEnable(GL_TEXTURE_2D);
-	Texture *texture = _bind_canvas_texture( p_texture );
-// 	ERR_FAIL_COND(!texture);
-// 	glActiveTexture(GL_TEXTURE0);
-// 	glBindTexture( GL_TEXTURE_2D,texture->tex_id );
-
-	if (texture) {
-
-		bool untile = false;
-
-		if (p_flags & CANVAS_RECT_TILE && !(texture->flags & VS::TEXTURE_FLAG_REPEAT)) {
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-			untile = true;
-		}
-
-		if (!(p_flags & CANVAS_RECT_REGION)) {
-
-			Rect2 region = Rect2(0, 0, texture->width, texture->height);
-			_draw_textured_quad(p_rect, region, region.size, p_flags & CANVAS_RECT_FLIP_H, p_flags & CANVAS_RECT_FLIP_V, p_flags & CANVAS_RECT_TRANSPOSE);
-
-		} else {
-
-			_draw_textured_quad(p_rect, p_source, Size2(texture->width, texture->height), p_flags & CANVAS_RECT_FLIP_H, p_flags & CANVAS_RECT_FLIP_V, p_flags & CANVAS_RECT_TRANSPOSE);
-		}
-
-		if (untile) {
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		}
-
-	} else {
-
-		glDisable(GL_TEXTURE_2D);
-		_draw_quad(p_rect);
-		//print_line("rect: "+p_rect);
-	}
-
-// 	_rinfo.ci_draw_commands++;
-}
-
-/*
-
-void RasterizerPSP::canvas_draw_rect(const Rect2 &p_rect, int p_flags, const Rect2 &p_source, RID p_texture, const Color &p_modulate) {
-
-	Color m = p_modulate;
-	m.a *= canvas_opacity;
-	_set_glcoloro(m, m.a);
-	Texture *texture = _bind_canvas_texture(p_texture);
-
-	if (texture) {
-
-		bool untile = false;
-
-		if (p_flags & CANVAS_RECT_TILE && !(texture->flags & VS::TEXTURE_FLAG_REPEAT)) {
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-			untile = true;
-		}
-
-		if (!(p_flags & CANVAS_RECT_REGION)) {
-
-			Rect2 region = Rect2(0, 0, texture->width, texture->height);
-			_draw_textured_quad(p_rect, region, region.size, p_flags & CANVAS_RECT_FLIP_H, p_flags & CANVAS_RECT_FLIP_V, p_flags & CANVAS_RECT_TRANSPOSE);
-
-		} else {
-
-			_draw_textured_quad(p_rect, p_source, Size2(texture->width, texture->height), p_flags & CANVAS_RECT_FLIP_H, p_flags & CANVAS_RECT_FLIP_V, p_flags & CANVAS_RECT_TRANSPOSE);
-		}
-
-		if (untile) {
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		}
-
-	} else {
-
-		//glDisable(GL_TEXTURE_2D);
-		_draw_quad(p_rect);
-		//print_line("rect: "+p_rect);
-	}
-
-// 	_rinfo.ci_draw_commands++;
-}
-/*
-void RasterizerPSP::canvas_draw_style_box(const Rect2 &p_rect, const Rect2 &p_src_region, RID p_texture, const float *p_margins, bool p_draw_center, const Color &p_modulate) {
-
+void RasterizerPSP::canvas_draw_style_box(const Rect2 &p_rect, const Rect2 &p_src_region, RID p_texture, const float *p_margin, bool p_draw_center, const Color &p_modulate) {
+	print_line("canvas_draw_style_box");
 	_set_glcoloro( p_modulate,canvas_opacity );
 
 
@@ -6172,52 +5304,52 @@ void RasterizerPSP::canvas_draw_style_box(const Rect2 &p_rect, const Rect2 &p_sr
 	glBindTexture( GL_TEXTURE_2D,texture->tex_id );
 
 
-
+	/* CORNERS */
 
 	_draw_textured_quad( // top left
-		Rect2( p_rect.pos, Size2(p_margins[MARGIN_LEFT],p_margins[MARGIN_TOP])),
-		Rect2( Point2(), Size2(p_margins[MARGIN_LEFT],p_margins[MARGIN_TOP])),
+		Rect2( p_rect.pos, Size2(p_margin[MARGIN_LEFT],p_margin[MARGIN_TOP])),
+		Rect2( Point2(), Size2(p_margin[MARGIN_LEFT],p_margin[MARGIN_TOP])),
 		Size2( texture->width, texture->height ) );
 
 	_draw_textured_quad( // top right
-		Rect2( Point2( p_rect.pos.x + p_rect.size.width - p_margins[MARGIN_RIGHT], p_rect.pos.y), Size2(p_margins[MARGIN_RIGHT],p_margins[MARGIN_TOP])),
-		Rect2( Point2(texture->width-p_margins[MARGIN_RIGHT],0), Size2(p_margins[MARGIN_RIGHT],p_margins[MARGIN_TOP])),
+		Rect2( Point2( p_rect.pos.x + p_rect.size.width - p_margin[MARGIN_RIGHT], p_rect.pos.y), Size2(p_margin[MARGIN_RIGHT],p_margin[MARGIN_TOP])),
+		Rect2( Point2(texture->width-p_margin[MARGIN_RIGHT],0), Size2(p_margin[MARGIN_RIGHT],p_margin[MARGIN_TOP])),
 		Size2( texture->width, texture->height ) );
 
 
 	_draw_textured_quad( // bottom left
-		Rect2( Point2(p_rect.pos.x,p_rect.pos.y + p_rect.size.height - p_margins[MARGIN_BOTTOM]), Size2(p_margins[MARGIN_LEFT],p_margins[MARGIN_BOTTOM])),
-		Rect2( Point2(0,texture->height-p_margins[MARGIN_BOTTOM]), Size2(p_margins[MARGIN_LEFT],p_margins[MARGIN_BOTTOM])),
+		Rect2( Point2(p_rect.pos.x,p_rect.pos.y + p_rect.size.height - p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_LEFT],p_margin[MARGIN_BOTTOM])),
+		Rect2( Point2(0,texture->height-p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_LEFT],p_margin[MARGIN_BOTTOM])),
 		Size2( texture->width, texture->height ) );
 
 	_draw_textured_quad( // bottom right
-		Rect2( Point2( p_rect.pos.x + p_rect.size.width - p_margins[MARGIN_RIGHT], p_rect.pos.y + p_rect.size.height - p_margins[MARGIN_BOTTOM]), Size2(p_margins[MARGIN_RIGHT],p_margins[MARGIN_BOTTOM])),
-		Rect2( Point2(texture->width-p_margins[MARGIN_RIGHT],texture->height-p_margins[MARGIN_BOTTOM]), Size2(p_margins[MARGIN_RIGHT],p_margins[MARGIN_BOTTOM])),
+		Rect2( Point2( p_rect.pos.x + p_rect.size.width - p_margin[MARGIN_RIGHT], p_rect.pos.y + p_rect.size.height - p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_RIGHT],p_margin[MARGIN_BOTTOM])),
+		Rect2( Point2(texture->width-p_margin[MARGIN_RIGHT],texture->height-p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_RIGHT],p_margin[MARGIN_BOTTOM])),
 		Size2( texture->width, texture->height ) );
 
-	Rect2 rect_center( p_rect.pos+Point2( p_margins[MARGIN_LEFT], p_margins[MARGIN_TOP]), Size2( p_rect.size.width - p_margins[MARGIN_LEFT] - p_margins[MARGIN_RIGHT], p_rect.size.height - p_margins[MARGIN_TOP] - p_margins[MARGIN_BOTTOM] ));
+	Rect2 rect_center( p_rect.pos+Point2( p_margin[MARGIN_LEFT], p_margin[MARGIN_TOP]), Size2( p_rect.size.width - p_margin[MARGIN_LEFT] - p_margin[MARGIN_RIGHT], p_rect.size.height - p_margin[MARGIN_TOP] - p_margin[MARGIN_BOTTOM] ));
 
-	Rect2 src_center( Point2( p_margins[MARGIN_LEFT], p_margins[MARGIN_TOP]), Size2( texture->width - p_margins[MARGIN_LEFT] - p_margins[MARGIN_RIGHT], texture->height - p_margins[MARGIN_TOP] - p_margins[MARGIN_BOTTOM] ));
+	Rect2 src_center( Point2( p_margin[MARGIN_LEFT], p_margin[MARGIN_TOP]), Size2( texture->width - p_margin[MARGIN_LEFT] - p_margin[MARGIN_RIGHT], texture->height - p_margin[MARGIN_TOP] - p_margin[MARGIN_BOTTOM] ));
 
 
 	_draw_textured_quad( // top
-		Rect2( Point2(rect_center.pos.x,p_rect.pos.y),Size2(rect_center.size.width,p_margins[MARGIN_TOP])),
-		Rect2( Point2(p_margins[MARGIN_LEFT],0), Size2(src_center.size.width,p_margins[MARGIN_TOP])),
+		Rect2( Point2(rect_center.pos.x,p_rect.pos.y),Size2(rect_center.size.width,p_margin[MARGIN_TOP])),
+		Rect2( Point2(p_margin[MARGIN_LEFT],0), Size2(src_center.size.width,p_margin[MARGIN_TOP])),
 		Size2( texture->width, texture->height ) );
 
 	_draw_textured_quad( // bottom
-		Rect2( Point2(rect_center.pos.x,rect_center.pos.y+rect_center.size.height),Size2(rect_center.size.width,p_margins[MARGIN_BOTTOM])),
-		Rect2( Point2(p_margins[MARGIN_LEFT],src_center.pos.y+src_center.size.height), Size2(src_center.size.width,p_margins[MARGIN_BOTTOM])),
+		Rect2( Point2(rect_center.pos.x,rect_center.pos.y+rect_center.size.height),Size2(rect_center.size.width,p_margin[MARGIN_BOTTOM])),
+		Rect2( Point2(p_margin[MARGIN_LEFT],src_center.pos.y+src_center.size.height), Size2(src_center.size.width,p_margin[MARGIN_BOTTOM])),
 		Size2( texture->width, texture->height ) );
 
 	_draw_textured_quad( // left
-		Rect2( Point2(p_rect.pos.x,rect_center.pos.y),Size2(p_margins[MARGIN_LEFT],rect_center.size.height)),
-		Rect2( Point2(0,p_margins[MARGIN_TOP]), Size2(p_margins[MARGIN_LEFT],src_center.size.height)),
+		Rect2( Point2(p_rect.pos.x,rect_center.pos.y),Size2(p_margin[MARGIN_LEFT],rect_center.size.height)),
+		Rect2( Point2(0,p_margin[MARGIN_TOP]), Size2(p_margin[MARGIN_LEFT],src_center.size.height)),
 		Size2( texture->width, texture->height ) );
 
 	_draw_textured_quad( // right
-		Rect2( Point2(rect_center.pos.x+rect_center.size.width,rect_center.pos.y),Size2(p_margins[MARGIN_RIGHT],rect_center.size.height)),
-		Rect2( Point2(src_center.pos.x+src_center.size.width,p_margins[MARGIN_TOP]), Size2(p_margins[MARGIN_RIGHT],src_center.size.height)),
+		Rect2( Point2(rect_center.pos.x+rect_center.size.width,rect_center.pos.y),Size2(p_margin[MARGIN_RIGHT],rect_center.size.height)),
+		Rect2( Point2(src_center.pos.x+src_center.size.width,p_margin[MARGIN_TOP]), Size2(p_margin[MARGIN_RIGHT],src_center.size.height)),
 		Size2( texture->width, texture->height ) );
 
 	if (p_draw_center) {
@@ -6228,81 +5360,9 @@ void RasterizerPSP::canvas_draw_style_box(const Rect2 &p_rect, const Rect2 &p_sr
 			Size2( texture->width, texture->height ));
 	}
 
-}*/
-
-void RasterizerPSP::canvas_draw_style_box(const Rect2 &p_rect, const Rect2 &p_src_region, RID p_texture, const float *p_margin, bool p_draw_center, const Color &p_modulate) {
-
-	Color m = p_modulate;
-	m.a *= canvas_opacity;
-	_set_glcoloro(m, m.a);
-
-	Texture *texture = _bind_canvas_texture(p_texture);
-	ERR_FAIL_COND(!texture);
-
-	Rect2 region = p_src_region;
-	if (region.size.width <= 0)
-		region.size.width = texture->width;
-	if (region.size.height <= 0)
-		region.size.height = texture->height;
-	/* CORNERS */
-	_draw_textured_quad( // top left
-			Rect2(p_rect.pos, Size2(p_margin[MARGIN_LEFT], p_margin[MARGIN_TOP])),
-			Rect2(region.pos, Size2(p_margin[MARGIN_LEFT], p_margin[MARGIN_TOP])),
-			Size2(texture->width, texture->height));
-
-	_draw_textured_quad( // top right
-			Rect2(Point2(p_rect.pos.x + p_rect.size.width - p_margin[MARGIN_RIGHT], p_rect.pos.y), Size2(p_margin[MARGIN_RIGHT], p_margin[MARGIN_TOP])),
-			Rect2(Point2(region.pos.x + region.size.width - p_margin[MARGIN_RIGHT], region.pos.y), Size2(p_margin[MARGIN_RIGHT], p_margin[MARGIN_TOP])),
-			Size2(texture->width, texture->height));
-
-	_draw_textured_quad( // bottom left
-			Rect2(Point2(p_rect.pos.x, p_rect.pos.y + p_rect.size.height - p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_LEFT], p_margin[MARGIN_BOTTOM])),
-			Rect2(Point2(region.pos.x, region.pos.y + region.size.height - p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_LEFT], p_margin[MARGIN_BOTTOM])),
-			Size2(texture->width, texture->height));
-
-	_draw_textured_quad( // bottom right
-			Rect2(Point2(p_rect.pos.x + p_rect.size.width - p_margin[MARGIN_RIGHT], p_rect.pos.y + p_rect.size.height - p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_RIGHT], p_margin[MARGIN_BOTTOM])),
-			Rect2(Point2(region.pos.x + region.size.width - p_margin[MARGIN_RIGHT], region.pos.y + region.size.height - p_margin[MARGIN_BOTTOM]), Size2(p_margin[MARGIN_RIGHT], p_margin[MARGIN_BOTTOM])),
-			Size2(texture->width, texture->height));
-
-	Rect2 rect_center(p_rect.pos + Point2(p_margin[MARGIN_LEFT], p_margin[MARGIN_TOP]), Size2(p_rect.size.width - p_margin[MARGIN_LEFT] - p_margin[MARGIN_RIGHT], p_rect.size.height - p_margin[MARGIN_TOP] - p_margin[MARGIN_BOTTOM]));
-
-	Rect2 src_center(Point2(region.pos.x + p_margin[MARGIN_LEFT], region.pos.y + p_margin[MARGIN_TOP]), Size2(region.size.width - p_margin[MARGIN_LEFT] - p_margin[MARGIN_RIGHT], region.size.height - p_margin[MARGIN_TOP] - p_margin[MARGIN_BOTTOM]));
-
-	_draw_textured_quad( // top
-			Rect2(Point2(rect_center.pos.x, p_rect.pos.y), Size2(rect_center.size.width, p_margin[MARGIN_TOP])),
-			Rect2(Point2(src_center.pos.x, region.pos.y), Size2(src_center.size.width, p_margin[MARGIN_TOP])),
-			Size2(texture->width, texture->height));
-
-	_draw_textured_quad( // bottom
-			Rect2(Point2(rect_center.pos.x, rect_center.pos.y + rect_center.size.height), Size2(rect_center.size.width, p_margin[MARGIN_BOTTOM])),
-			Rect2(Point2(src_center.pos.x, src_center.pos.y + src_center.size.height), Size2(src_center.size.width, p_margin[MARGIN_BOTTOM])),
-			Size2(texture->width, texture->height));
-
-	_draw_textured_quad( // left
-			Rect2(Point2(p_rect.pos.x, rect_center.pos.y), Size2(p_margin[MARGIN_LEFT], rect_center.size.height)),
-			Rect2(Point2(region.pos.x, region.pos.y + p_margin[MARGIN_TOP]), Size2(p_margin[MARGIN_LEFT], src_center.size.height)),
-			Size2(texture->width, texture->height));
-
-	_draw_textured_quad( // right
-			Rect2(Point2(rect_center.pos.x + rect_center.size.width, rect_center.pos.y), Size2(p_margin[MARGIN_RIGHT], rect_center.size.height)),
-			Rect2(Point2(src_center.pos.x + src_center.size.width, region.pos.y + p_margin[MARGIN_TOP]), Size2(p_margin[MARGIN_RIGHT], src_center.size.height)),
-			Size2(texture->width, texture->height));
-
-	if (p_draw_center) {
-
-		_draw_textured_quad(
-				rect_center,
-				src_center,
-				Size2(texture->width, texture->height));
-	}
-
-// 	_rinfo.ci_draw_commands++;
 }
-
-
 void RasterizerPSP::canvas_draw_primitive(const Vector<Point2>& p_points, const Vector<Color>& p_colors,const Vector<Point2>& p_uvs, RID p_texture,float p_width) {
-/*
+	print_line("canvas_draw_primitive");
 	ERR_FAIL_COND(p_points.size()<1);
 	Vector3 verts[4];
 	Vector3 uvs[4];
@@ -6329,25 +5389,8 @@ void RasterizerPSP::canvas_draw_primitive(const Vector<Point2>& p_points, const 
 	}
 
 	glLineWidth(p_width);
-	_draw_primitive(p_points.size(),&verts[0],NULL,p_colors.size()?&p_colors[0]:NULL,p_uvs.size()?uvs:NULL);*/
-	Vector3 verts[4];
-	Vector3 uvs[4];
-	for(int i=0;i<p_points.size();i++) {
+	_draw_primitive(p_points.size(),&verts[0],NULL,p_colors.size()?&p_colors[0]:NULL,p_uvs.size()?uvs:NULL);
 
-		verts[i]=Vector3(p_points[i].x,p_points[i].y,0);
-	}
-
-	for(int i=0;i<p_uvs.size();i++) {
-
-		uvs[i]=Vector3(p_uvs[i].x,p_uvs[i].y,0);
-	}
-
-	ERR_FAIL_COND(p_points.size() < 1);
-	_set_glcoloro(Color(1, 1, 1), canvas_opacity);
-	_bind_canvas_texture(p_texture);
-	_draw_primitive(p_points.size(), verts,NULL, p_colors.ptr(), uvs);
-
-// 	_rinfo.ci_draw_commands++;
 }
 
 static const int _max_draw_poly_indices = 8*1024;
@@ -6355,7 +5398,7 @@ static uint16_t _draw_poly_indices[_max_draw_poly_indices];
 static float _verts3[_max_draw_poly_indices];
 
 void RasterizerPSP::canvas_draw_polygon(int p_vertex_count, const int* p_indices, const Vector2* p_vertices, const Vector2* p_uvs, const Color* p_colors,const RID& p_texture,bool p_singlecolor) {
-
+	print_line("canvas_draw_polygon");
 	bool do_colors=false;
 
 	//reset_state();
@@ -6393,7 +5436,7 @@ void RasterizerPSP::canvas_draw_polygon(int p_vertex_count, const int* p_indices
 
 	if (texture && p_uvs) {
 
-		//glClientActiveTexture(GL_TEXTURE0);
+// 		glClientActiveTexture(GL_TEXTURE0);
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 		glTexCoordPointer(2, GL_FLOAT, 0, p_uvs);
 
@@ -6419,7 +5462,7 @@ void RasterizerPSP::canvas_draw_polygon(int p_vertex_count, const int* p_indices
 }
 
 void RasterizerPSP::canvas_set_transform(const Matrix32& p_transform) {
-
+	print_line("canvas_set_transform");
 	//restore
 	glPopMatrix();
 	glPushMatrix();
@@ -6758,6 +5801,18 @@ Variant RasterizerPSP::environment_fx_get_param(RID p_env,VS::EnvironmentFxParam
 
 }
 
+/* SAMPLED LIGHT */
+
+RID RasterizerPSP::sampled_light_dp_create(int p_width,int p_height) {
+
+	return sampled_light_owner.make_rid(memnew(SampledLight));
+}
+
+void RasterizerPSP::sampled_light_dp_update(RID p_sampled_light, const Color *p_data, float p_multiplier) {
+
+
+}
+
 /*MISC*/
 
 bool RasterizerPSP::is_texture(const RID& p_rid) const {
@@ -6772,6 +5827,12 @@ bool RasterizerPSP::is_mesh(const RID& p_rid) const {
 
 	return mesh_owner.owns(p_rid);
 }
+
+bool RasterizerPSP::is_immediate(const RID& p_rid) const {
+
+	return immediate_owner.owns(p_rid);
+}
+
 bool RasterizerPSP::is_multimesh(const RID& p_rid) const {
 
 	return multimesh_owner.owns(p_rid);
@@ -6864,7 +5925,7 @@ void RasterizerPSP::free(const RID& p_rid) {
 				surface->morph_targets_local=NULL;
 			}
 
- 			if (surface->vertex_id)
+			if (surface->vertex_id)
 				glDeleteBuffers(1,&surface->vertex_id);
 			if (surface->index_id)
 				glDeleteBuffers(1,&surface->index_id);
@@ -6892,6 +5953,13 @@ void RasterizerPSP::free(const RID& p_rid) {
 
 		particles_owner.free(p_rid);
 		memdelete(particles);
+	} else if (immediate_owner.owns(p_rid)) {
+
+		Immediate *immediate = immediate_owner.get(p_rid);
+		ERR_FAIL_COND(!immediate);
+
+		immediate_owner.free(p_rid);
+		memdelete(immediate);
 	} else if (particles_instance_owner.owns(p_rid)) {
 
 		ParticlesInstance *particles_isntance = particles_instance_owner.get(p_rid);
@@ -6939,6 +6007,13 @@ void RasterizerPSP::free(const RID& p_rid) {
 
 		environment_owner.free(p_rid);
 		memdelete( env );
+	} else if (sampled_light_owner.owns(p_rid)) {
+
+		SampledLight *sampled_light = sampled_light_owner.get( p_rid );
+		ERR_FAIL_COND(!sampled_light);
+
+		sampled_light_owner.free(p_rid);
+		memdelete( sampled_light );
 	};
 }
 
@@ -7246,7 +6321,7 @@ int RasterizerPSP::get_render_info(VS::RenderInfo p_info) {
 
 bool RasterizerPSP::needs_to_draw_next_frame() const {
 
-	return draw_next_frame;
+	return false;
 }
 
 void RasterizerPSP::reload_vram() {
@@ -7327,12 +6402,10 @@ RasterizerPSP::RasterizerPSP(bool p_keep_copies,bool p_use_reload_hooks) {
 	use_reload_hooks=p_use_reload_hooks;
 
 	frame = 0;
-	draw_next_frame = false;
 };
 
 RasterizerPSP::~RasterizerPSP() {
 
 };
-
 
 #endif

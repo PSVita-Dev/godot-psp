@@ -73,14 +73,17 @@ void AudioDriverPSP::thread_func(void *p_udata) {
 	uint64_t usdelay = (ad->buffer_size / float(ad->mix_rate)) * 1000000;
 
  	while (!ad->exit_thread) {
-		ad->lock();
+
 
  		if (ad->exit_thread)
  			break;
 
 		if (ad->active) {
+			ad->lock();
 
 			ad->audio_server_process(ad->buffer_size, ad->samples_in);
+
+			ad->unlock();
 
 			for(int i = 0; i < sample_count; ++i) {
 				ad->samples_out[i] = ad->samples_in[i] >> 16;
@@ -96,7 +99,6 @@ void AudioDriverPSP::thread_func(void *p_udata) {
 		}
 
 		sceAudioOutput(channel_num, 0x8000, ad->samples_out);
-		ad->unlock();
 		OS::get_singleton()->delay_usec(usdelay);
 	}
 

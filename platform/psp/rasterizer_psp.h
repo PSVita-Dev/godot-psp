@@ -339,12 +339,12 @@ class RasterizerPSP : public Rasterizer {
 
 	Error _surface_set_arrays(Surface *p_surface, uint8_t *p_mem,uint8_t *p_index_mem,const Array& p_arrays,bool p_main);
 
-struct MultiMesh;
+	struct MultiMesh;
 
 	struct MultiMeshSurface : public Geometry {
 
 		Surface *surface;
-		MultiMeshSurface() { type = GEOMETRY_MULTISURFACE; }
+		MultiMeshSurface() { type=GEOMETRY_MULTISURFACE; }
 	};
 
 	struct MultiMesh : public GeometryOwner {
@@ -353,27 +353,6 @@ struct MultiMesh;
 
 			float matrix[16];
 			uint8_t color[4];
-			Element() {
-				matrix[0] = 1;
-				matrix[1] = 0;
-				matrix[2] = 0;
-				matrix[3] = 0;
-
-				matrix[4] = 0;
-				matrix[5] = 1;
-				matrix[6] = 0;
-				matrix[7] = 0;
-
-				matrix[8] = 0;
-				matrix[9] = 0;
-				matrix[10] = 1;
-				matrix[11] = 0;
-
-				matrix[12] = 0;
-				matrix[13] = 0;
-				matrix[14] = 0;
-				matrix[15] = 1;
-			};
 		};
 
 		AABB aabb;
@@ -384,25 +363,15 @@ struct MultiMesh;
 		Vector<Element> elements;
 		Vector<MultiMeshSurface> cache_surfaces;
 		mutable uint64_t last_pass;
-		GLuint tex_id;
-		int tw;
-		int th;
 
-		SelfList<MultiMesh> dirty_list;
+		MultiMesh() {
 
-		MultiMesh() :
-				dirty_list(this) {
-
-			tw = 1;
-			th = 1;
-			tex_id = 0;
-			last_pass = 0;
+			last_pass=0;
 			visible = -1;
 		}
 	};
 
 	mutable RID_Owner<MultiMesh> multimesh_owner;
-	mutable SelfList<MultiMesh>::List _multimesh_dirty_list;
 
 
 	struct Immediate {
@@ -438,86 +407,13 @@ struct MultiMesh;
 	mutable RID_Owner<ParticlesInstance> particles_instance_owner;
 	ParticleSystemDrawInfoSW particle_draw_info;
 
-
 	struct Skeleton {
 
-		struct Bone {
+		Vector<Transform> bones;
 
-			float mtx[4][4]; //used
-
-			Bone() {
-				for (int i = 0; i < 4; i++) {
-					for (int j = 0; j < 4; j++) {
-
-						mtx[i][j] = (i == j) ? 1 : 0;
-					}
-				}
-			}
-
-			_ALWAYS_INLINE_ void transform_add_mul3(const float *p_src, float *r_dst, float p_weight) const {
-
-				r_dst[0] += ((mtx[0][0] * p_src[0]) + (mtx[1][0] * p_src[1]) + (mtx[2][0] * p_src[2]) + mtx[3][0]) * p_weight;
-				r_dst[1] += ((mtx[0][1] * p_src[0]) + (mtx[1][1] * p_src[1]) + (mtx[2][1] * p_src[2]) + mtx[3][1]) * p_weight;
-				r_dst[2] += ((mtx[0][2] * p_src[0]) + (mtx[1][2] * p_src[1]) + (mtx[2][2] * p_src[2]) + mtx[3][2]) * p_weight;
-			}
-			_ALWAYS_INLINE_ void transform3_add_mul3(const float *p_src, float *r_dst, float p_weight) const {
-
-				r_dst[0] += ((mtx[0][0] * p_src[0]) + (mtx[1][0] * p_src[1]) + (mtx[2][0] * p_src[2])) * p_weight;
-				r_dst[1] += ((mtx[0][1] * p_src[0]) + (mtx[1][1] * p_src[1]) + (mtx[2][1] * p_src[2])) * p_weight;
-				r_dst[2] += ((mtx[0][2] * p_src[0]) + (mtx[1][2] * p_src[1]) + (mtx[2][2] * p_src[2])) * p_weight;
-			}
-
-			_ALWAYS_INLINE_ AABB transform_aabb(const AABB &p_aabb) const {
-
-				float vertices[8][3] = {
-					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z },
-					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z },
-					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z },
-					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z },
-					{ p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z },
-					{ p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z },
-					{ p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z },
-					{ p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z }
-				};
-
-				AABB ret;
-
-				for (int i = 0; i < 8; i++) {
-
-					Vector3 xv(
-
-							((mtx[0][0] * vertices[i][0]) + (mtx[1][0] * vertices[i][1]) + (mtx[2][0] * vertices[i][2]) + mtx[3][0]),
-							((mtx[0][1] * vertices[i][0]) + (mtx[1][1] * vertices[i][1]) + (mtx[2][1] * vertices[i][2]) + mtx[3][1]),
-							((mtx[0][2] * vertices[i][0]) + (mtx[1][2] * vertices[i][1]) + (mtx[2][2] * vertices[i][2]) + mtx[3][2]));
-
-					if (i == 0)
-						ret.pos = xv;
-					else
-						ret.expand_to(xv);
-				}
-
-				return ret;
-			}
-		};
-
-		GLuint tex_id;
-		float pixel_size; //for texture
-		Vector<Bone> bones;
-
-		SelfList<Skeleton> dirty_list;
-
-		Skeleton() :
-				dirty_list(this) {
-			tex_id = 0;
-			pixel_size = 1.0;
-		}
 	};
 
 	mutable RID_Owner<Skeleton> skeleton_owner;
-	mutable SelfList<Skeleton>::List _skeleton_dirty_list;
-
-	template <bool USE_NORMAL, bool USE_TANGENT, bool INPLACE>
-	void _skeleton_xform(const uint8_t *p_src_array, int p_src_stride, uint8_t *p_dst_array, int p_dst_stride, int p_elements, const uint8_t *p_src_bones, const uint8_t *p_src_weights, const Skeleton::Bone *p_bone_xforms);
 
 
 	struct Light {
@@ -657,7 +553,7 @@ struct MultiMesh;
 	int light_instance_count;
 	int directional_light_count;
 	int last_light_id;
-	GLuint gui_quad_buffer;
+
 
 
 	struct RenderList {
@@ -925,10 +821,7 @@ struct MultiMesh;
 		int vertex_count;
 		int object_count;
 		int mat_change_count;
-		int surface_count;
 		int shader_change_count;
-		int ci_draw_commands;
-		int draw_calls;
 
 	} _rinfo;
 
@@ -950,14 +843,12 @@ struct MultiMesh;
 	double time_delta;
 	uint64_t frame;
 	uint64_t scene_pass;
-	bool draw_next_frame;
-	float time_scale;
-	double scaled_time;
 
 	//void _draw_primitive(int p_points, const Vector3 *p_vertices, const Vector3 *p_normals, const Color* p_colors, const Vector3 *p_uvs,const Plane *p_tangents=NULL,int p_instanced=1);
-	void _draw_textured_quad(const Rect2 &p_rect, const Rect2 &p_src_region, const Size2 &p_tex_size, bool p_h_flip = false, bool p_v_flip = false, bool p_transpose= false);
+	//void _draw_textured_quad(const Rect2& p_rect, const Rect2& p_src_region, const Size2& p_tex_size,bool p_h_flip=false, bool p_v_flip=false );
 	//void _draw_quad(const Rect2& p_rect);
-	void _draw_gui_primitive(int p_points, const Vector2 *p_vertices, const Color *p_colors, const Vector2 *p_uvs);
+	template <bool use_normalmap>
+	_FORCE_INLINE_ void _canvas_item_render_commands(CanvasItem *p_item, CanvasItem *current_clip, bool &reclip);
 
 public:
 
@@ -979,7 +870,11 @@ public:
 	virtual String texture_get_path(RID p_texture) const { return String(); }
 	virtual void texture_debug_usage(List<VS::TextureInfo> *r_info) {}
 	virtual void texture_set_shrink_all_x2_on_set_data(bool p_enable) {}
-
+	virtual void shader_set_default_texture_param(RID p_shader, const StringName &p_name, RID p_texture) {}
+	virtual RID shader_get_default_texture_param(RID p_shader, const StringName &p_name) const { return RID(); }
+	virtual Variant shader_get_default_param(RID p_shader, const StringName &p_name) { return Variant(); }
+	virtual void set_camera(const Transform &p_world, const CameraMatrix &p_projection, bool p_ortho_hint);
+	virtual void begin_canvas_bg() { }
 	/* SHADER API */
 
 	virtual RID shader_create(VS::ShaderMode p_mode=VS::SHADER_MATERIAL);
@@ -990,12 +885,9 @@ public:
 	virtual void shader_set_code(RID p_shader, const String& p_vertex, const String& p_fragment,const String& p_light,int p_vertex_ofs=0,int p_fragment_ofs=0,int p_light_ofs=0);
 	virtual String shader_get_fragment_code(RID p_shader) const;
 	virtual String shader_get_vertex_code(RID p_shader) const;
-	virtual String shader_get_light_code(RID p_shader) const { return String(); };
+	virtual String shader_get_light_code(RID p_shader) const;
 
 	virtual void shader_get_param_list(RID p_shader, List<PropertyInfo> *p_param_list) const;
-	virtual void shader_set_default_texture_param(RID p_shader, const StringName& p_name, RID p_texture);
-	virtual RID shader_get_default_texture_param(RID p_shader, const StringName& p_name) const;
-	virtual Variant shader_get_default_param(RID p_shader, const StringName& p_name);
 
 	/* COMMON MATERIAL API */
 
@@ -1010,8 +902,8 @@ public:
 	virtual void material_set_flag(RID p_material, VS::MaterialFlag p_flag,bool p_enabled);
 	virtual bool material_get_flag(RID p_material,VS::MaterialFlag p_flag) const;
 
-	virtual void material_set_depth_draw_mode(RID p_material, VS::MaterialDepthDrawMode p_mode) { };
-	virtual VS::MaterialDepthDrawMode material_get_depth_draw_mode(RID p_material) const { return VS::MATERIAL_DEPTH_DRAW_ALWAYS; };
+	virtual void material_set_depth_draw_mode(RID p_material, VS::MaterialDepthDrawMode p_mode);
+	virtual VS::MaterialDepthDrawMode material_get_depth_draw_mode(RID p_material) const;
 
 	virtual void material_set_blend_mode(RID p_material,VS::MaterialBlendMode p_mode);
 	virtual VS::MaterialBlendMode material_get_blend_mode(RID p_material) const;
@@ -1068,10 +960,10 @@ public:
 	virtual void mesh_remove_surface(RID p_mesh,int p_index);
 	virtual int mesh_get_surface_count(RID p_mesh) const;
 
-	virtual AABB mesh_get_aabb(RID p_mesh,RID p_skeleton=RID()) const { return AABB(); };
+	virtual AABB mesh_get_aabb(RID p_mesh,RID p_skeleton=RID()) const;
 
-	virtual void mesh_set_custom_aabb(RID p_mesh,const AABB& p_aabb) { };
-	virtual AABB mesh_get_custom_aabb(RID p_mesh) const { return AABB(); };
+	virtual void mesh_set_custom_aabb(RID p_mesh,const AABB& p_aabb);
+	virtual AABB mesh_get_custom_aabb(RID p_mesh) const;
 
 	/* MULTIMESH API */
 
@@ -1096,19 +988,19 @@ public:
 
 	/* IMMEDIATE API */
 
-	virtual RID immediate_create() { return RID(); };
-	virtual void immediate_begin(RID p_immediate,VS::PrimitiveType p_rimitive,RID p_texture=RID()) { };
-	virtual void immediate_vertex(RID p_immediate,const Vector3& p_vertex) { };
-	virtual void immediate_normal(RID p_immediate,const Vector3& p_normal) { };
-	virtual void immediate_tangent(RID p_immediate,const Plane& p_tangent) { };
-	virtual void immediate_color(RID p_immediate,const Color& p_color) { };
-	virtual void immediate_uv(RID p_immediate,const Vector2& tex_uv) { };
-	virtual void immediate_uv2(RID p_immediate,const Vector2& tex_uv) { };
-	virtual void immediate_end(RID p_immediate) { };
-	virtual void immediate_clear(RID p_immediate) { };
-	virtual AABB immediate_get_aabb(RID p_immediate) const { return AABB(); };
-	virtual void immediate_set_material(RID p_immediate,RID p_material) { };
-	virtual RID immediate_get_material(RID p_immediate) const { return RID(); };
+	virtual RID immediate_create();
+	virtual void immediate_begin(RID p_immediate,VS::PrimitiveType p_rimitive,RID p_texture=RID());
+	virtual void immediate_vertex(RID p_immediate,const Vector3& p_vertex);
+	virtual void immediate_normal(RID p_immediate,const Vector3& p_normal);
+	virtual void immediate_tangent(RID p_immediate,const Plane& p_tangent);
+	virtual void immediate_color(RID p_immediate,const Color& p_color);
+	virtual void immediate_uv(RID p_immediate,const Vector2& tex_uv);
+	virtual void immediate_uv2(RID p_immediate,const Vector2& tex_uv);
+	virtual void immediate_end(RID p_immediate);
+	virtual void immediate_clear(RID p_immediate);
+	virtual AABB immediate_get_aabb(RID p_immediate) const;
+	virtual void immediate_set_material(RID p_immediate,RID p_material);
+	virtual RID immediate_get_material(RID p_immediate) const;
 
 
 	/* PARTICLES API */
@@ -1222,7 +1114,7 @@ public:
 	virtual bool light_instance_assign_shadow(RID p_light_instance);
 	virtual ShadowType light_instance_get_shadow_type(RID p_light_instance) const;
 	virtual int light_instance_get_shadow_passes(RID p_light_instance) const;
-	virtual bool light_instance_get_pssm_shadow_overlap(RID p_light_instance) const { return false; };
+	virtual bool light_instance_get_pssm_shadow_overlap(RID p_light_instance) const;
 	virtual void light_instance_set_custom_transform(RID p_light_instance, int p_index, const CameraMatrix& p_camera, const Transform& p_transform, float p_split_near=0,float p_split_far=0);
 	virtual int light_instance_get_shadow_size(RID p_light_instance, int p_index=0) const { return 1; }
 
@@ -1262,7 +1154,7 @@ public:
 	virtual void begin_scene(RID p_viewport_data,RID p_env,VS::ScenarioDebugMode p_debug);
 	virtual void begin_shadow_map( RID p_light_instance, int p_shadow_pass );
 
-	virtual void set_camera(const Transform &p_world, const CameraMatrix &p_projection, bool p_ortho_hint);
+	virtual void set_camera(const Transform& p_world,const CameraMatrix& p_projection);
 
 	virtual void add_light( RID p_light_instance ); ///< all "add_light" calls happen before add_geometry calls
 
@@ -1288,21 +1180,19 @@ public:
 	virtual void canvas_end_rect();
 	virtual void canvas_draw_line(const Point2& p_from, const Point2& p_to,const Color& p_color,float p_width);
 	virtual void canvas_draw_rect(const Rect2& p_rect, int p_flags, const Rect2& p_source,RID p_texture,const Color& p_modulate);
-	virtual void canvas_draw_style_box(const Rect2 &p_rect, const Rect2 &p_src_region, RID p_texture, const float *p_margins, bool p_draw_center = true, const Color &p_modulate = Color(1, 1, 1));
+	virtual void canvas_draw_style_box(const Rect2 &p_rect, const Rect2 &p_src_region, RID p_texture, const float *p_margin, bool p_draw_center = true, const Color &p_modulate = Color(1, 1, 1));
 	virtual void canvas_draw_primitive(const Vector<Point2>& p_points, const Vector<Color>& p_colors,const Vector<Point2>& p_uvs, RID p_texture,float p_width);
 	virtual void canvas_draw_polygon(int p_vertex_count, const int* p_indices, const Vector2* p_vertices, const Vector2* p_uvs, const Color* p_colors,const RID& p_texture,bool p_singlecolor);
 	virtual void canvas_set_transform(const Matrix32& p_transform);
-	virtual void canvas_light_shadow_buffer_update(RID p_buffer, const Matrix32 &p_light_xform, int p_light_mask, float p_near, float p_far, CanvasLightOccluderInstance *p_occluders, CameraMatrix *p_xform_cache) {return; };
-	virtual RID canvas_light_occluder_create() { return RID(); };
-	virtual void canvas_light_occluder_set_polylines(RID p_occluder, const DVector<Vector2>& p_lines) { };
-	virtual void canvas_render_items(CanvasItem *p_item_list,int p_z,const Color& p_modulate,CanvasLight *p_light);
-	virtual void begin_canvas_bg() { };
-
-	virtual RID canvas_light_shadow_buffer_create(int p_width) { };
-
+	virtual void canvas_render_items(CanvasItem *p_item_list, int p_z, const Color &p_modulate, CanvasLight *p_light);
 	virtual void canvas_debug_viewport_shadows(CanvasLight* p_lights_with_shadow) { };
-	template<bool use_normalmap>
-	_FORCE_INLINE_ void _canvas_item_render_commands(CanvasItem *p_item,CanvasItem *current_clip,bool &reclip);
+	virtual RID canvas_light_occluder_create() { RID(); };
+	virtual void canvas_light_occluder_set_polylines(RID p_occluder, const DVector<Vector2> &p_lines) { };
+	virtual RID canvas_light_shadow_buffer_create(int p_width) { return RID(); }
+	virtual void canvas_light_shadow_buffer_update(RID p_buffer, const Matrix32 &p_light_xform, int p_light_mask, float p_near, float p_far, CanvasLightOccluderInstance *p_occluders, CameraMatrix *p_xform_cache) { };
+
+	virtual void set_time_scale(float p_scale) { };
+	virtual void restore_framebuffer() { };
 
 	/* FX */
 
@@ -1331,8 +1221,8 @@ public:
 	virtual Variant environment_fx_get_param(RID p_env,VS::EnvironmentFxParam p_param) const;
 
 	/* SAMPLED LIGHT */
-	virtual RID sampled_light_dp_create(int p_width,int p_height) { return RID(); };
-	virtual void sampled_light_dp_update(RID p_sampled_light,const Color *p_data,float p_multiplier) { };
+	virtual RID sampled_light_dp_create(int p_width,int p_height);
+	virtual void sampled_light_dp_update(RID p_sampled_light,const Color *p_data,float p_multiplier);
 
 
 	/*MISC*/
@@ -1341,7 +1231,7 @@ public:
 	virtual bool is_material(const RID& p_rid) const;
 	virtual bool is_mesh(const RID& p_rid) const;
 	virtual bool is_multimesh(const RID& p_rid) const;
-	virtual bool is_immediate(const RID& p_rid) const { return false; };
+	virtual bool is_immediate(const RID& p_rid) const;
 	virtual bool is_particles(const RID &p_beam) const;
 
 	virtual bool is_light(const RID& p_rid) const;
@@ -1351,7 +1241,7 @@ public:
 	virtual bool is_environment(const RID& p_rid) const;
 	virtual bool is_fx(const RID& p_rid) const;
 	virtual bool is_shader(const RID& p_rid) const;
-	virtual bool is_canvas_light_occluder(const RID& p_rid) const { return false; };
+	virtual bool is_canvas_light_occluder(const RID &p_rid) const { return false; };
 
 	virtual void free(const RID& p_rid);
 
@@ -1367,10 +1257,6 @@ public:
 	virtual void finish();
 
 	virtual int get_render_info(VS::RenderInfo p_info);
-
-	virtual void restore_framebuffer() {};
-
-	virtual void set_time_scale(float p_scale) { };
 
 	void reload_vram();
 
