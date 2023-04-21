@@ -166,12 +166,12 @@ void OS_PSP::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 
 	init_keys();
 
-	rasterizer_psp = memnew(RasterizerPSP);
+// 	rasterizer_psp = memnew(RasterizerPSP);
 
-// 	rasterizer = memnew(RasterizerPSP);
+	rasterizer = memnew(RasterizerPSP);
 
 
-	visual_server = memnew(VisualServerRaster(rasterizer_psp));
+	visual_server = memnew(VisualServerRaster(rasterizer));
 
 // 	AudioDriverManagerSW::add_driver(&audio_driver);
  	AudioDriverManagerSW::initialize(p_audio_driver);
@@ -192,7 +192,7 @@ void OS_PSP::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 	//
 	physics_server = memnew(PhysicsServerSW);
 	physics_server->init();
-	physics_2d_server = memnew(Physics2DServerSW);
+	physics_2d_server = Physics2DServerWrapMT::init_server<Physics2DServerSW>();
 	physics_2d_server->init();
 
 	input = memnew(InputDefault);

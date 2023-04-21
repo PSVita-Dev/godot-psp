@@ -1166,7 +1166,7 @@ void RasterizerPSP::fixed_material_set_flag(RID p_material, VS::FixedMaterialFla
 
 	Material *m=material_owner.get( p_material );
 	ERR_FAIL_COND(!m);
-	ERR_FAIL_INDEX(p_flag, 3);
+	ERR_FAIL_INDEX(p_flag, VS::MATERIAL_FLAG_MAX);
 	m->fixed_flags[p_flag]=p_enabled;
 }
 
@@ -2956,7 +2956,7 @@ void RasterizerPSP::begin_frame() {
 	time_delta=time-last_time;
 	last_time=time;
 	frame++;
-	clear_viewport(Color(1,0,0.5));
+	clear_viewport(Color(1,0,0));
 
 	_rinfo.vertex_count=0;
 	_rinfo.object_count=0;
@@ -3368,9 +3368,9 @@ void RasterizerPSP::_setup_fixed_material(const Geometry *p_geometry,const Mater
 void RasterizerPSP::_setup_material(const Geometry *p_geometry,const Material *p_material) {
 
 	if (p_material->flags[VS::MATERIAL_FLAG_DOUBLE_SIDED])
-		glDisable(GL_CULL_FACE);
-	else {
 		glEnable(GL_CULL_FACE);
+	else {
+		glDisable(GL_CULL_FACE);
 	}
 
 /*	if (p_material->flags[VS::MATERIAL_FLAG_WIREFRAME])
@@ -4865,16 +4865,16 @@ void RasterizerPSP::canvas_draw_line(const Point2& p_from, const Point2& p_to,co
 static void _draw_textured_quad(const Rect2& p_rect, const Rect2& p_src_region, const Size2& p_tex_size,bool p_flip_h=false,bool p_flip_v=false ) {
 	Vector3 texcoords[4]= {
 		Vector3( p_src_region.pos.x/p_tex_size.width,
-		p_src_region.pos.y/p_tex_size.height, -1),
+		p_src_region.pos.y/p_tex_size.height, 0),
 
 		Vector3((p_src_region.pos.x+p_src_region.size.width)/p_tex_size.width,
-		p_src_region.pos.y/p_tex_size.height, -1),
+		p_src_region.pos.y/p_tex_size.height, 0),
 
 		Vector3( (p_src_region.pos.x+p_src_region.size.width)/p_tex_size.width,
-		(p_src_region.pos.y+p_src_region.size.height)/p_tex_size.height, -1),
+		(p_src_region.pos.y+p_src_region.size.height)/p_tex_size.height, 0),
 
 		Vector3( p_src_region.pos.x/p_tex_size.width,
-		(p_src_region.pos.y+p_src_region.size.height)/p_tex_size.height, -1)
+		(p_src_region.pos.y+p_src_region.size.height)/p_tex_size.height, 0)
 	};
 
 
@@ -4888,10 +4888,10 @@ static void _draw_textured_quad(const Rect2& p_rect, const Rect2& p_src_region, 
 	}
 
 	Vector3 coords[4]= {
-		Vector3( p_rect.pos.x, p_rect.pos.y, -1 ),
-		Vector3( p_rect.pos.x+p_rect.size.width, p_rect.pos.y, -1 ),
-		Vector3( p_rect.pos.x+p_rect.size.width, p_rect.pos.y+p_rect.size.height, -1 ),
-		Vector3( p_rect.pos.x,p_rect.pos.y+p_rect.size.height, -1 )
+		Vector3( p_rect.pos.x, p_rect.pos.y, 0 ),
+		Vector3( p_rect.pos.x+p_rect.size.width, p_rect.pos.y, 0 ),
+		Vector3( p_rect.pos.x+p_rect.size.width, p_rect.pos.y+p_rect.size.height, 0 ),
+		Vector3( p_rect.pos.x,p_rect.pos.y+p_rect.size.height, 0 )
 	};
 
 
@@ -4974,7 +4974,7 @@ void RasterizerPSP::_canvas_item_render_commands(CanvasItem *p_item, CanvasItem 
 				CanvasItem::CommandRect *rect = static_cast<CanvasItem::CommandRect *>(c);
 
 				int flags = rect->flags;
-// 				if (use_normalmap)
+//  				if (use_normalmap)
 // 					_canvas_normal_set_flip(Vector2((flags & CANVAS_RECT_FLIP_H) ? -1 : 1, (flags & CANVAS_RECT_FLIP_V) ? -1 : 1));
 				canvas_draw_rect(rect->rect, flags, rect->source, rect->texture, rect->modulate);
 
@@ -4989,15 +4989,15 @@ void RasterizerPSP::_canvas_item_render_commands(CanvasItem *p_item, CanvasItem 
 			} break;
 			case CanvasItem::Command::TYPE_PRIMITIVE: {
 
-// 				if (use_normalmap)
-// 					_canvas_normal_set_flip(Vector2(1, 1));
+//  				if (use_normalmap)
+//  					_canvas_normal_set_flip(Vector2(1, 1));
 				CanvasItem::CommandPrimitive *primitive = static_cast<CanvasItem::CommandPrimitive *>(c);
 				canvas_draw_primitive(primitive->points, primitive->colors, primitive->uvs, primitive->texture, primitive->width);
 			} break;
 			case CanvasItem::Command::TYPE_POLYGON: {
 
 // 				if (use_normalmap)
-// 					_canvas_normal_set_flip(Vector2(1, 1));
+//  					_canvas_normal_set_flip(Vector2(1, 1));
 				CanvasItem::CommandPolygon *polygon = static_cast<CanvasItem::CommandPolygon *>(c);
 				canvas_draw_polygon(polygon->count, polygon->indices.ptr(), polygon->points.ptr(), polygon->uvs.ptr(), polygon->colors.ptr(), polygon->texture, polygon->colors.size() == 1);
 
@@ -5005,8 +5005,8 @@ void RasterizerPSP::_canvas_item_render_commands(CanvasItem *p_item, CanvasItem 
 
 			case CanvasItem::Command::TYPE_POLYGON_PTR: {
 
-// 				if (use_normalmap)
-// 					_canvas_normal_set_flip(Vector2(1, 1));
+//  				if (use_normalmap)
+//  					_canvas_normal_set_flip(Vector2(1, 1));
 				CanvasItem::CommandPolygonPtr *polygon = static_cast<CanvasItem::CommandPolygonPtr *>(c);
 				canvas_draw_polygon(polygon->count, polygon->indices, polygon->points, polygon->uvs, polygon->colors, polygon->texture, false);
 			} break;
@@ -5081,6 +5081,8 @@ void RasterizerPSP::_canvas_item_render_commands(CanvasItem *p_item, CanvasItem 
 
 			} break;
 		}
+
+
 	}
 }
 
@@ -5111,9 +5113,11 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list, int p_z, const 
 
 		CanvasItem *ci = p_item_list;
 
-		canvas_begin_rect(p_item_list->xform);
-// 		canvas_set_opacity(p_item_list->final_opacity);
-// 		canvas_set_blend_mode(p_item_list->blend_mode);
+
+
+		canvas_begin_rect(ci->final_transform);
+		canvas_set_opacity(ci->final_opacity);
+		canvas_set_blend_mode(ci->blend_mode);
 
 
 

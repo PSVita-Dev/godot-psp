@@ -3266,6 +3266,8 @@ void VisualServerRaster::canvas_item_set_transform(RID p_item, const Matrix32 &p
 	CanvasItem *canvas_item = canvas_item_owner.get(p_item);
 	ERR_FAIL_COND(!canvas_item);
 
+// 	printf("canvas_item_set_transform\n");
+
 	canvas_item->xform = p_transform;
 }
 
@@ -6333,6 +6335,8 @@ void VisualServerRaster::_render_canvas_item(CanvasItem *p_canvas_item, const Ma
 	Rect2 global_rect = xform.xform(rect);
 	global_rect.pos += p_clip_rect.pos;
 
+
+
 	if (global_rect.intersects(p_clip_rect) && ci->viewport.is_valid() && viewport_owner.owns(ci->viewport)) {
 
 		Viewport *vp = viewport_owner.get(ci->viewport);
@@ -6435,6 +6439,7 @@ void VisualServerRaster::_render_canvas_item(CanvasItem *p_canvas_item, const Ma
 
 		if (!child_items[i]->ontop)
 			continue;
+
 		_render_canvas_item(child_items[i], xform, p_clip_rect, opacity, p_z, z_list, z_last_list, (CanvasItem *)ci->final_clip_owner, p_material_owner);
 	}
 }

@@ -33,6 +33,7 @@
 #include "os/os.h"
 #include <string.h>
 
+#define PPSSPP
 
 static int channel_num = 1;
 
@@ -77,7 +78,11 @@ void AudioDriverPSP::thread_func(void *p_udata) {
 
  		if (ad->exit_thread)
  			break;
-
+#ifndef PPSSPP
+		while(sceAudioWaitInputEnd()) {
+			OS::get_singleton()->delay_usec(usdelay);
+		}
+#endif
 		if (ad->active) {
 			ad->lock();
 
@@ -97,9 +102,10 @@ void AudioDriverPSP::thread_func(void *p_udata) {
 				ad->samples_out[i] = 0;
 			}
 		}
-
-		sceAudioOutput(channel_num, 0x8000, ad->samples_out);
+#ifdef PPSSPP
 		OS::get_singleton()->delay_usec(usdelay);
+#endif
+		sceAudioOutput(channel_num, 0x8000, ad->samples_out);
 	}
 
 

@@ -33,13 +33,10 @@
 
 #include "audio_driver_psp.h"
 #include "main/input_default.h"
-#include <pspctrl.h>
-// #include "joypad_psp.h"
-// #include "drivers/rtaudio/audio_driver_rtaudio.h"
 #include "drivers/unix/os_unix.h"
 #include "main/input_default.h"
 #include "servers/audio/audio_server_sw.h"
-// #include "servers/audio/audio_driver_dummy.h"
+#include "servers/physics_2d/physics_2d_server_wrap_mt.h"
 #include "rasterizer_psp.h"
 #include "servers/audio/sample_manager_sw.h"
 #include "servers/physics_2d/physics_2d_server_sw.h"
@@ -48,6 +45,8 @@
 #include "servers/spatial_sound_2d/spatial_sound_2d_server_sw.h"
 #include "servers/visual/rasterizer.h"
 #include "servers/visual_server.h"
+
+#include <pspctrl.h>
 
 //bitch
 #undef CursorShape
@@ -63,7 +62,6 @@ class OS_PSP : public OS {
 	List<String> args;
 	MainLoop *main_loop;
 
-	RasterizerPSP *rasterizer_psp;
 
 	bool grab;
 	uint64_t ticks_start;
