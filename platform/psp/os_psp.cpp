@@ -315,19 +315,14 @@ void OS_PSP::process_keys() {
 
 	last++;
 
-	if (pad.Buttons != 0) {
-		for(int i = 0; i < 16; i++) {
-			if (pad.Buttons & buttons[i]) {
-				last = input->joy_button(last, 0, i, true);
-			}
-		}
-	} else {
-		for(int i = 0; i < 16; i++) {
-			if (!(pad.Buttons & buttons[i])) {
-				last = input->joy_button(last, 0, i, false);
-			}
+	for(int i = 0; i < 16; i++) {
+		if (pad.Buttons & buttons[i]) {
+			last = input->joy_button(last, 0, i, true);
+		} else {
+			last = input->joy_button(last, 0, i, false);
 		}
 	}
+
 }
 
 void OS_PSP::delete_main_loop() {
