@@ -323,6 +323,13 @@ void OS_PSP::process_keys() {
 		}
 	}
 
+	InputDefault::JoyAxis ly, lx;
+
+	lx.value = (pad.Lx / 127) - 1;
+	ly.value = (pad.Ly / 127) - 1;
+
+	input->joy_axis(0, 0, 0, lx);
+	input->joy_axis(0, 0, 1, ly);
 }
 
 void OS_PSP::delete_main_loop() {
