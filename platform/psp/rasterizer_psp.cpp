@@ -196,6 +196,104 @@ static void _draw_primitive(int p_points, const Vector3 *p_vertices, const Vecto
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 };
 
+void RasterizerPSP::_draw_tex_bg() {
+
+	glDepthMask(GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+	glColorMask(1, 1, 1, 1);
+
+	RID texture;
+
+	if (current_env->bg_mode == VS::ENV_BG_TEXTURE) {
+		texture = current_env->bg_param[VS::ENV_BG_PARAM_TEXTURE];
+	} else {
+		texture = current_env->bg_param[VS::ENV_BG_PARAM_CUBEMAP];
+	}
+
+	if (!texture_owner.owns(texture)) {
+		return;
+	}
+
+	Texture *t = texture_owner.get(texture);
+
+// 	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(t->target, t->tex_id);
+
+
+	float nrg = float(current_env->bg_param[VS::ENV_BG_PARAM_ENERGY]);
+	if (current_env->fx_enabled[VS::ENV_FX_HDR])
+		nrg *= 0.25; //go down a quarter for hdr
+
+
+	float flip_sign = (current_env->bg_mode == VS::ENV_BG_TEXTURE) ? -1 : 1;
+
+	Vector3 vertices[4] = {
+		Vector3(-1, -1 * flip_sign, 1),
+		Vector3(1, -1 * flip_sign, 1),
+		Vector3(1, 1 * flip_sign, 1),
+		Vector3(-1, 1 * flip_sign, 1)
+	};
+
+	Vector3 src_uv[4] = {
+		Vector3(0, 1, 0),
+		Vector3(1, 1, 0),
+		Vector3(1, 0, 0),
+		Vector3(0, 0, 0)
+	};
+
+	if (current_env->bg_mode == VS::ENV_BG_TEXTURE) {
+
+		//regular texture
+		//adjust aspect
+
+		float aspect_t = t->width / float(t->height);
+		float aspect_v = viewport.width / float(viewport.height);
+
+		if (aspect_v > aspect_t) {
+			//wider than texture
+			for (int i = 0; i < 4; i++) {
+				src_uv[i].y = (src_uv[i].y - 0.5) * (aspect_t / aspect_v) + 0.5;
+			}
+
+		} else {
+			//narrower than texture
+			for (int i = 0; i < 4; i++) {
+				src_uv[i].x = (src_uv[i].x - 0.5) * (aspect_v / aspect_t) + 0.5;
+			}
+		}
+
+		float scale = current_env->bg_param[VS::ENV_BG_PARAM_SCALE];
+		for (int i = 0; i < 4; i++) {
+
+			src_uv[i].x *= scale;
+			src_uv[i].y *= scale;
+		}
+	} else {
+
+		//skybox uv vectors
+		float vw, vh, zn;
+		camera_projection.get_viewport_size(vw, vh);
+		zn = camera_projection.get_z_near();
+
+		float scale = current_env->bg_param[VS::ENV_BG_PARAM_SCALE];
+
+		for (int i = 0; i < 4; i++) {
+
+			Vector3 uv = src_uv[i];
+			uv.x = (uv.x * 2.0 - 1.0) * vw * scale;
+			uv.y = -(uv.y * 2.0 - 1.0) * vh * scale;
+			uv.z = -zn;
+			src_uv[i] = camera_transform.basis.xform(uv).normalized();
+			src_uv[i].z = -src_uv[i].z;
+		}
+	}
+
+	_draw_primitive(4, vertices, NULL, NULL, src_uv);
+
+}
+
 /* TEXTURE API */
 #define _EXT_COMPRESSED_RGB_PVRTC_4BPPV1_IMG                   0x8C00
 #define _EXT_COMPRESSED_RGB_PVRTC_2BPPV1_IMG                   0x8C01
@@ -3024,6 +3122,7 @@ void RasterizerPSP::begin_scene(RID p_viewport_data,RID p_env,VS::ScenarioDebugM
 	scene_fx = NULL; // p_env.is_valid() ? fx_owner.get(p_env) : NULL;
 	scene_pass++;
 	last_light_id=0;
+	current_env = p_env.is_valid() ? environment_owner.get(p_env) : NULL;
 	directional_light_count=0;
 
 
@@ -4448,7 +4547,49 @@ void RasterizerPSP::end_scene() {
 
 	//projection
 	//glEnable(GL_RESCALE_NORMAL);
+
+	if (current_env) {
+
+		switch (current_env->bg_mode) {
+
+			case VS::ENV_BG_CANVAS:
+			case VS::ENV_BG_KEEP: {
+				//copy from framebuffer if framebuffer
+				glClear(GL_DEPTH_BUFFER_BIT);
+			} break;
+			case VS::ENV_BG_DEFAULT_COLOR:
+			case VS::ENV_BG_COLOR: {
+
+				Color bgcolor;
+				if (current_env->bg_mode == VS::ENV_BG_COLOR)
+					bgcolor = current_env->bg_param[VS::ENV_BG_PARAM_COLOR];
+				else
+					bgcolor = Globals::get_singleton()->get("render/default_clear_color");
+				float a = 1.0;
+				glClearColor(bgcolor.r, bgcolor.g, bgcolor.b, a);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+			} break;
+			case VS::ENV_BG_TEXTURE:
+			case VS::ENV_BG_CUBEMAP: {
+
+				glClear(GL_DEPTH_BUFFER_BIT);
+				draw_tex_background = true;
+			} break;
+		}
+	} else {
+
+		Color c = Color(0.3, 0.3, 0.3);
+		glClearColor(c.r, c.g, c.b, 0.0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	}
+
 	glEnable(GL_NORMALIZE);
+
+	if(draw_tex_background) {
+		_draw_tex_bg();
+	}
+
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadMatrixf(&camera_projection.matrix[0][0]);
@@ -4465,6 +4606,8 @@ void RasterizerPSP::end_scene() {
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
 	_render_list_forward(&opaque_render_list);
+
+	current_env = NULL;
 
 
 	alpha_render_list.sort_z();

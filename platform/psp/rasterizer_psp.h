@@ -828,6 +828,7 @@ class RasterizerPSP : public Rasterizer {
 	GLuint white_tex;
 	RID canvas_tex;
 	float canvas_opacity;
+	Environment *current_env;
 	VS::MaterialBlendMode canvas_blend;
 	_FORCE_INLINE_ Texture* _bind_canvas_texture(const RID& p_texture);
 
@@ -843,10 +844,14 @@ class RasterizerPSP : public Rasterizer {
 	double time_delta;
 	uint64_t frame;
 	uint64_t scene_pass;
+	bool draw_tex_background;
 
 	//void _draw_primitive(int p_points, const Vector3 *p_vertices, const Vector3 *p_normals, const Color* p_colors, const Vector3 *p_uvs,const Plane *p_tangents=NULL,int p_instanced=1);
 	//void _draw_textured_quad(const Rect2& p_rect, const Rect2& p_src_region, const Size2& p_tex_size,bool p_h_flip=false, bool p_v_flip=false );
 	//void _draw_quad(const Rect2& p_rect);
+
+	void _draw_tex_bg();
+
 	template <bool use_normalmap>
 	_FORCE_INLINE_ void _canvas_item_render_commands(CanvasItem *p_item, CanvasItem *current_clip, bool &reclip);
 
