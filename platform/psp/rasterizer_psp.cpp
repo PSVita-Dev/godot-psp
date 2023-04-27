@@ -3323,7 +3323,7 @@ void RasterizerPSP::clear_viewport(const Color& p_color) {
 	glScissor( viewport.x, window_size.height-(viewport.height+viewport.y), viewport.width,viewport.height );
 	glEnable(GL_SCISSOR_TEST);
 	glClearColor(p_color.r,p_color.g,p_color.b,p_color.a);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //should not clear if anything else cleared..
+	glClear(GL_COLOR_BUFFER_BIT); //should not clear if anything else cleared..
 	glDisable(GL_SCISSOR_TEST);
 
 };
