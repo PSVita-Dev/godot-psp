@@ -33,6 +33,7 @@
 #include "rasterizer_psp.h"
 #include "globals.h"
 #include "os/os.h"
+#include "os_psp.h"
 #include <stdio.h>
 
 #define print_line
@@ -1533,7 +1534,6 @@ void RasterizerPSP::mesh_add_surface(RID p_mesh,VS::PrimitiveType p_primitive,co
 
 /*
 				if (use_VBO) {
-
 					glGenBuffers(1,&surface->index_id);
 					ERR_FAIL_COND(surface->index_id==0);
 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,surface->index_id);
@@ -2679,40 +2679,207 @@ RID RasterizerPSP::skeleton_create() {
 	ERR_FAIL_COND_V(!skeleton,RID());
 	return skeleton_owner.make_rid( skeleton );
 }
+
+template <bool USE_NORMAL, bool USE_TANGENT, bool INPLACE>
+void RasterizerPSP::_skeleton_xform(const uint8_t *p_src_array, int p_src_stride, uint8_t *p_dst_array, int p_dst_stride, int p_elements, const uint8_t *p_src_bones, const uint8_t *p_src_weights, const Skeleton::Bone *p_bone_xforms) {
+
+	uint32_t basesize = 3;
+	if (USE_NORMAL)
+		basesize += 3;
+	if (USE_TANGENT)
+		basesize += 4;
+
+	uint32_t extra = (p_dst_stride - basesize * 4);
+	const int dstvec_size = 3 + (USE_NORMAL ? 3 : 0) + (USE_TANGENT ? 4 : 0);
+	float dstcopy[dstvec_size];
+
+	for (int i = 0; i < p_elements; i++) {
+
+		uint32_t ss = p_src_stride * i;
+		uint32_t ds = p_dst_stride * i;
+		const uint16_t *bi = (const uint16_t *)&p_src_bones[ss];
+		const float *bw = (const float *)&p_src_weights[ss];
+		const float *src_vec = (const float *)&p_src_array[ss];
+		float *dst_vec;
+		if (INPLACE)
+			dst_vec = dstcopy;
+		else
+			dst_vec = (float *)&p_dst_array[ds];
+
+		dst_vec[0] = 0.0;
+		dst_vec[1] = 0.0;
+		dst_vec[2] = 0.0;
+		//conditionals simply removed by optimizer
+		if (USE_NORMAL) {
+
+			dst_vec[3] = 0.0;
+			dst_vec[4] = 0.0;
+			dst_vec[5] = 0.0;
+
+			if (USE_TANGENT) {
+
+				dst_vec[6] = 0.0;
+				dst_vec[7] = 0.0;
+				dst_vec[8] = 0.0;
+				dst_vec[9] = src_vec[9];
+			}
+		} else {
+
+			if (USE_TANGENT) {
+
+				dst_vec[3] = 0.0;
+				dst_vec[4] = 0.0;
+				dst_vec[5] = 0.0;
+				dst_vec[6] = src_vec[6];
+			}
+		}
+
+#define _XFORM_BONE(m_idx)                                                                     \
+	if (bw[m_idx] == 0)                                                                        \
+		goto end;                                                                              \
+	p_bone_xforms[bi[m_idx]].transform_add_mul3(&src_vec[0], &dst_vec[0], bw[m_idx]);          \
+	if (USE_NORMAL) {                                                                          \
+		p_bone_xforms[bi[m_idx]].transform3_add_mul3(&src_vec[3], &dst_vec[3], bw[m_idx]);     \
+		if (USE_TANGENT) {                                                                     \
+			p_bone_xforms[bi[m_idx]].transform3_add_mul3(&src_vec[6], &dst_vec[6], bw[m_idx]); \
+		}                                                                                      \
+	} else {                                                                                   \
+		if (USE_TANGENT) {                                                                     \
+			p_bone_xforms[bi[m_idx]].transform3_add_mul3(&src_vec[3], &dst_vec[3], bw[m_idx]); \
+		}                                                                                      \
+	}
+
+		_XFORM_BONE(0);
+		_XFORM_BONE(1);
+		_XFORM_BONE(2);
+		_XFORM_BONE(3);
+
+	end:
+
+		if (INPLACE) {
+
+			const uint8_t *esp = (const uint8_t *)dstcopy;
+			uint8_t *edp = (uint8_t *)&p_dst_array[ds];
+
+			for (uint32_t j = 0; j < dstvec_size * 4; j++) {
+
+				edp[j] = esp[j];
+			}
+
+		} else {
+			//copy extra stuff
+			const uint8_t *esp = (const uint8_t *)&src_vec[basesize];
+			uint8_t *edp = (uint8_t *)&dst_vec[basesize];
+
+			for (uint32_t j = 0; j < extra; j++) {
+
+				edp[j] = esp[j];
+			}
+		}
+	}
+}
+
 void RasterizerPSP::skeleton_resize(RID p_skeleton,int p_bones) {
 
-	Skeleton *skeleton = skeleton_owner.get( p_skeleton );
+	Skeleton *skeleton = skeleton_owner.get(p_skeleton);
 	ERR_FAIL_COND(!skeleton);
 	if (p_bones == skeleton->bones.size()) {
 		return;
 	};
+	if (use_hw_skeleton_xform) {
 
+		if (next_power_of_2(p_bones) != next_power_of_2(skeleton->bones.size())) {
+			if (skeleton->tex_id) {
+				glDeleteTextures(1, &skeleton->tex_id);
+				skeleton->tex_id = 0;
+			}
+
+			if (p_bones) {
+
+				glGenTextures(1, &skeleton->tex_id);
+// 				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, skeleton->tex_id);
+				int ps = next_power_of_2(p_bones * 3);
+#ifdef GLEW_ENABLED
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, ps, 1, 0, GL_RGBA, GL_FLOAT, skel_default.ptr());
+#else
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ps, 1, 0, GL_RGBA, GL_FLOAT, skel_default.ptr());
+#endif
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				skeleton->pixel_size = 1.0 / ps;
+
+				glBindTexture(GL_TEXTURE_2D, 0);
+			}
+		}
+
+		if (!skeleton->dirty_list.in_list()) {
+			_skeleton_dirty_list.add(&skeleton->dirty_list);
+		}
+	}
 	skeleton->bones.resize(p_bones);
 
 }
 int RasterizerPSP::skeleton_get_bone_count(RID p_skeleton) const {
 
-	Skeleton *skeleton = skeleton_owner.get( p_skeleton );
+	Skeleton *skeleton = skeleton_owner.get(p_skeleton);
 	ERR_FAIL_COND_V(!skeleton, -1);
 	return skeleton->bones.size();
 }
 void RasterizerPSP::skeleton_bone_set_transform(RID p_skeleton,int p_bone, const Transform& p_transform) {
 
-	Skeleton *skeleton = skeleton_owner.get( p_skeleton );
-	ERR_FAIL_COND(!skeleton);
-	ERR_FAIL_INDEX( p_bone, skeleton->bones.size() );
 
-	skeleton->bones[p_bone] = p_transform;
+	Skeleton *skeleton = skeleton_owner.get(p_skeleton);
+	ERR_FAIL_COND(!skeleton);
+	ERR_FAIL_INDEX(p_bone, skeleton->bones.size());
+
+	Skeleton::Bone &b = skeleton->bones[p_bone];
+
+	b.mtx[0][0] = p_transform.basis[0][0];
+	b.mtx[0][1] = p_transform.basis[1][0];
+	b.mtx[0][2] = p_transform.basis[2][0];
+	b.mtx[1][0] = p_transform.basis[0][1];
+	b.mtx[1][1] = p_transform.basis[1][1];
+	b.mtx[1][2] = p_transform.basis[2][1];
+	b.mtx[2][0] = p_transform.basis[0][2];
+	b.mtx[2][1] = p_transform.basis[1][2];
+	b.mtx[2][2] = p_transform.basis[2][2];
+	b.mtx[3][0] = p_transform.origin[0];
+	b.mtx[3][1] = p_transform.origin[1];
+	b.mtx[3][2] = p_transform.origin[2];
+
+	if (skeleton->tex_id) {
+		if (!skeleton->dirty_list.in_list()) {
+			_skeleton_dirty_list.add(&skeleton->dirty_list);
+		}
+	}
 }
 
 Transform RasterizerPSP::skeleton_bone_get_transform(RID p_skeleton,int p_bone) {
 
-	Skeleton *skeleton = skeleton_owner.get( p_skeleton );
+	Skeleton *skeleton = skeleton_owner.get(p_skeleton);
 	ERR_FAIL_COND_V(!skeleton, Transform());
-	ERR_FAIL_INDEX_V( p_bone, skeleton->bones.size(), Transform() );
+	ERR_FAIL_INDEX_V(p_bone, skeleton->bones.size(), Transform());
 
-	// something
-	return skeleton->bones[p_bone];
+	const Skeleton::Bone &b = skeleton->bones[p_bone];
+
+	Transform t;
+	t.basis[0][0] = b.mtx[0][0];
+	t.basis[1][0] = b.mtx[0][1];
+	t.basis[2][0] = b.mtx[0][2];
+	t.basis[0][1] = b.mtx[1][0];
+	t.basis[1][1] = b.mtx[1][1];
+	t.basis[2][1] = b.mtx[1][2];
+	t.basis[0][2] = b.mtx[2][0];
+	t.basis[1][2] = b.mtx[2][1];
+	t.basis[2][2] = b.mtx[2][2];
+	t.origin[0] = b.mtx[3][0];
+	t.origin[1] = b.mtx[3][1];
+	t.origin[2] = b.mtx[3][2];
+
+	return t;
 }
 
 
@@ -3981,79 +4148,19 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 
 				if (skeleton_valid) {
 					//transform stuff
+						const uint8_t *src_weights = &surf->array_local[surf->array[VS::ARRAY_WEIGHTS].ofs];
+						const uint8_t *src_bones = &surf->array_local[surf->array[VS::ARRAY_BONES].ofs];
+						const Skeleton::Bone *skeleton = &p_skeleton->bones[0];
 
-					const uint8_t *src_weights=&surf->array_local[surf->array[VS::ARRAY_WEIGHTS].ofs];
-					const uint8_t *src_bones=&surf->array_local[surf->array[VS::ARRAY_BONES].ofs];
-					int src_stride = surf->stride;
-					int count = surf->array_len;
-					const Transform *skeleton = &p_skeleton->bones[0];
+						if (surf->format & VS::ARRAY_FORMAT_NORMAL && surf->format & VS::ARRAY_FORMAT_TANGENT)
+							_skeleton_xform<true, true, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
+						else if (surf->format & (VS::ARRAY_FORMAT_NORMAL))
+							_skeleton_xform<true, false, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
+						else if (surf->format & (VS::ARRAY_FORMAT_TANGENT))
+							_skeleton_xform<false, true, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
+						else
+							_skeleton_xform<false, false, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
 
-					for(int i=0;i<VS::ARRAY_MAX-1;i++) {
-
-						const Surface::ArrayData& ad=surf->array[i];
-						if (ad.size==0)
-							continue;
-
-						int ofs = ad.ofs;
-
-
-						switch(i) {
-
-							case VS::ARRAY_VERTEX: {
-								for(int k=0;k<count;k++) {
-
-									float *ptr=  (float*)&base[ofs+k*stride];
-									const GLfloat* weights = reinterpret_cast<const GLfloat*>(&src_weights[k*src_stride]);
-									const GLfloat *bones = reinterpret_cast<const GLfloat*>(&src_bones[k*src_stride]);
-
-									Vector3 src( ptr[0], ptr[1], ptr[2] );
-									Vector3 dst;
-									for(int j=0;j<VS::ARRAY_WEIGHTS_SIZE;j++) {
-
-										float w = weights[j];
-										if (w==0)
-											break;
-
-										//print_line("accum "+itos(i)+" += "+rtos(Math::ftoi(bones[j]))+" * "+skeleton[ Math::ftoi(bones[j]) ]+" * "+rtos(w));
-										dst+=skeleton[ Math::fast_ftoi(bones[j]) ].xform(src) * w;
-									}
-
-									ptr[0]=dst.x;
-									ptr[1]=dst.y;
-									ptr[2]=dst.z;
-
-								} break;
-
-							} break;
-							case VS::ARRAY_NORMAL:
-							case VS::ARRAY_TANGENT: {
-								for(int k=0;k<count;k++) {
-
-									float *ptr=  (float*)&base[ofs+k*stride];
-									const GLfloat* weights = reinterpret_cast<const GLfloat*>(&src_weights[k*src_stride]);
-									const GLfloat *bones = reinterpret_cast<const GLfloat*>(&src_bones[k*src_stride]);
-
-									Vector3 src( ptr[0], ptr[1], ptr[2] );
-									Vector3 dst;
-									for(int j=0;j<VS::ARRAY_WEIGHTS_SIZE;j++) {
-
-										float w = weights[j];
-										if (w==0)
-											break;
-
-										//print_line("accum "+itos(i)+" += "+rtos(Math::ftoi(bones[j]))+" * "+skeleton[ Math::ftoi(bones[j]) ]+" * "+rtos(w));
-										dst+=skeleton[ Math::fast_ftoi(bones[j]) ].basis.xform(src) * w;
-									}
-
-									ptr[0]=dst.x;
-									ptr[1]=dst.y;
-									ptr[2]=dst.z;
-
-								} break;
-
-							} break;
-						}
-					}
 
 				}
 
@@ -5610,6 +5717,110 @@ void RasterizerPSP::canvas_draw_polygon(int p_vertex_count, const int* p_indices
 
 }
 
+RID RasterizerPSP::canvas_light_occluder_create() {
+
+	CanvasOccluder *co = memnew(CanvasOccluder);
+	co->index_id = 0;
+	co->vertex_id = 0;
+	co->len = 0;
+
+	return canvas_occluder_owner.make_rid(co);
+}
+
+
+void RasterizerPSP::canvas_light_occluder_set_polylines(RID p_occluder, const DVector<Vector2> &p_lines) {
+
+	CanvasOccluder *co = canvas_occluder_owner.get(p_occluder);
+	ERR_FAIL_COND(!co);
+
+	co->lines = p_lines;
+
+	if (p_lines.size() != co->len) {
+
+		if (co->index_id)
+			glDeleteBuffers(1, &co->index_id);
+		if (co->vertex_id)
+			glDeleteBuffers(1, &co->vertex_id);
+
+		co->index_id = 0;
+		co->vertex_id = 0;
+		co->len = 0;
+	}
+
+	if (p_lines.size()) {
+
+		DVector<float> geometry;
+		DVector<uint16_t> indices;
+		int lc = p_lines.size();
+
+		geometry.resize(lc * 6);
+		indices.resize(lc * 3);
+
+		DVector<float>::Write vw = geometry.write();
+		DVector<uint16_t>::Write iw = indices.write();
+
+		DVector<Vector2>::Read lr = p_lines.read();
+
+		const int POLY_HEIGHT = 16384;
+
+		for (int i = 0; i < lc / 2; i++) {
+
+			vw[i * 12 + 0] = lr[i * 2 + 0].x;
+			vw[i * 12 + 1] = lr[i * 2 + 0].y;
+			vw[i * 12 + 2] = POLY_HEIGHT;
+
+			vw[i * 12 + 3] = lr[i * 2 + 1].x;
+			vw[i * 12 + 4] = lr[i * 2 + 1].y;
+			vw[i * 12 + 5] = POLY_HEIGHT;
+
+			vw[i * 12 + 6] = lr[i * 2 + 1].x;
+			vw[i * 12 + 7] = lr[i * 2 + 1].y;
+			vw[i * 12 + 8] = -POLY_HEIGHT;
+
+			vw[i * 12 + 9] = lr[i * 2 + 0].x;
+			vw[i * 12 + 10] = lr[i * 2 + 0].y;
+			vw[i * 12 + 11] = -POLY_HEIGHT;
+
+			iw[i * 6 + 0] = i * 4 + 0;
+			iw[i * 6 + 1] = i * 4 + 1;
+			iw[i * 6 + 2] = i * 4 + 2;
+
+			iw[i * 6 + 3] = i * 4 + 2;
+			iw[i * 6 + 4] = i * 4 + 3;
+			iw[i * 6 + 5] = i * 4 + 0;
+		}
+
+		//if same buffer len is being set, just use BufferSubData to avoid a pipeline flush
+
+		if (!co->vertex_id) {
+			glGenBuffers(1, &co->vertex_id);
+			glBindBuffer(GL_ARRAY_BUFFER, co->vertex_id);
+			glBufferData(GL_ARRAY_BUFFER, lc * 6 * sizeof(real_t), vw.ptr(), GL_STATIC_DRAW);
+		} else {
+
+			glBindBuffer(GL_ARRAY_BUFFER, co->vertex_id);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, lc * 6 * sizeof(real_t), vw.ptr());
+		}
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0); //unbind
+
+		if (!co->index_id) {
+
+			glGenBuffers(1, &co->index_id);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, co->index_id);
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, lc * 3 * sizeof(uint16_t), iw.ptr(), GL_STATIC_DRAW);
+		} else {
+
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, co->index_id);
+			glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, lc * 3 * sizeof(uint16_t), iw.ptr());
+		}
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); //unbind
+
+		co->len = lc;
+	}
+}
+
 void RasterizerPSP::canvas_set_transform(const Matrix32& p_transform) {
 	print_line("canvas_set_transform");
 	//restore
@@ -5954,12 +6165,59 @@ Variant RasterizerPSP::environment_fx_get_param(RID p_env,VS::EnvironmentFxParam
 /* SAMPLED LIGHT */
 
 RID RasterizerPSP::sampled_light_dp_create(int p_width,int p_height) {
+	SampledLight *slight = memnew(SampledLight);
+	slight->w = p_width;
+	slight->h = p_height;
+	slight->multiplier = 1.0;
+	slight->is_float = false;
 
-	return sampled_light_owner.make_rid(memnew(SampledLight));
+// 	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &slight->texture);
+	glBindTexture(GL_TEXTURE_2D, slight->texture);
+	// for debug, but glitchy
+	//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	// Remove artifact on the edges of the shadowmap
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	if (slight->is_float) {
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, p_width, p_height, 0, GL_RGBA, GL_FLOAT, NULL);
+	} else {
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, p_width, p_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	}
+
+	return sampled_light_owner.make_rid(slight);
 }
 
 void RasterizerPSP::sampled_light_dp_update(RID p_sampled_light, const Color *p_data, float p_multiplier) {
+	SampledLight *slight = sampled_light_owner.get(p_sampled_light);
+	ERR_FAIL_COND(!slight);
 
+	glBindTexture(GL_TEXTURE_2D, slight->texture);
+
+	if (slight->is_float) {
+
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, slight->w, slight->h, GL_RGBA, GL_FLOAT, p_data);
+
+	} else {
+		//convert to bytes
+		uint8_t *tex8 = (uint8_t *)alloca(slight->w * slight->h * 4);
+		const float *src = (const float *)p_data;
+
+		for (int i = 0; i < slight->w * slight->h * 4; i++) {
+
+			tex8[i] = Math::fast_ftoi(CLAMP(src[i] * 255.0, 0.0, 255.0));
+		}
+
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, slight->w, slight->h, GL_RGBA, GL_UNSIGNED_BYTE, p_data);
+	}
+
+	slight->multiplier = p_multiplier;
 
 }
 
@@ -6552,6 +6810,28 @@ RasterizerPSP::RasterizerPSP(bool p_keep_copies,bool p_use_reload_hooks) {
 	use_reload_hooks=p_use_reload_hooks;
 
 	frame = 0;
+
+	skel_default.resize(1024 * 4);
+	for (int i = 0; i < 1024 / 3; i++) {
+
+		float *ptr = skel_default.ptr();
+		ptr += i * 4 * 4;
+		ptr[0] = 1.0;
+		ptr[1] = 0.0;
+		ptr[2] = 0.0;
+		ptr[3] = 0.0;
+
+		ptr[4] = 0.0;
+		ptr[5] = 1.0;
+		ptr[6] = 0.0;
+		ptr[7] = 0.0;
+
+		ptr[8] = 0.0;
+		ptr[9] = 0.0;
+		ptr[10] = 1.0;
+		ptr[12] = 0.0;
+	}
+
 };
 
 RasterizerPSP::~RasterizerPSP() {

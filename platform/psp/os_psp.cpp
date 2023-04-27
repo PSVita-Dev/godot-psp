@@ -68,6 +68,7 @@ static MemoryPoolStaticMalloc *mempool_static=NULL;
 static MemoryPoolDynamicStatic *mempool_dynamic=NULL;
 
 void OS_PSP::initialize_core() {
+
 	printf("init core\n");
  	ThreadPosix::make_default();
  	SemaphoreDummy::make_default();
@@ -98,6 +99,7 @@ void OS_PSP::finalize_core() {
 
 void OS_PSP::alert(const String &p_alert, const String &p_title) {
 // 	printf(p_alert);
+	printf(p_alert.utf8().get_data());
 }
 String OS_PSP::get_stdin_string(bool p_block) {
 	return "";
@@ -330,6 +332,9 @@ void OS_PSP::process_keys() {
 
 	input->joy_axis(0, 0, 0, lx);
 	input->joy_axis(0, 0, 1, ly);
+
+	if(pad.Buttons & PSP_CTRL_HOME)
+		sceKernelExitGame();
 }
 
 void OS_PSP::delete_main_loop() {

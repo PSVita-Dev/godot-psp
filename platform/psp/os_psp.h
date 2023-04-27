@@ -47,6 +47,9 @@
 #include "servers/visual_server.h"
 
 #include <pspctrl.h>
+#include <psputility.h>
+#include <pspkernel.h>
+#include <pspdebug.h>
 
 //bitch
 #undef CursorShape
@@ -83,6 +86,7 @@ class OS_PSP : public OS {
 
 // 	JoyPadPSP *joy;
 	SceCtrlData pad;
+	pspUtilityMsgDialogParams dialog;
 	int last;
 
 	InputDefault *input;

@@ -407,14 +407,89 @@ class RasterizerPSP : public Rasterizer {
 	mutable RID_Owner<ParticlesInstance> particles_instance_owner;
 	ParticleSystemDrawInfoSW particle_draw_info;
 
+
 	struct Skeleton {
 
-		Vector<Transform> bones;
+		struct Bone {
 
+			float mtx[4][4]; //used
+
+			Bone() {
+				for (int i = 0; i < 4; i++) {
+					for (int j = 0; j < 4; j++) {
+
+						mtx[i][j] = (i == j) ? 1 : 0;
+					}
+				}
+			}
+
+			_ALWAYS_INLINE_ void transform_add_mul3(const float *p_src, float *r_dst, float p_weight) const {
+
+				r_dst[0] += ((mtx[0][0] * p_src[0]) + (mtx[1][0] * p_src[1]) + (mtx[2][0] * p_src[2]) + mtx[3][0]) * p_weight;
+				r_dst[1] += ((mtx[0][1] * p_src[0]) + (mtx[1][1] * p_src[1]) + (mtx[2][1] * p_src[2]) + mtx[3][1]) * p_weight;
+				r_dst[2] += ((mtx[0][2] * p_src[0]) + (mtx[1][2] * p_src[1]) + (mtx[2][2] * p_src[2]) + mtx[3][2]) * p_weight;
+			}
+			_ALWAYS_INLINE_ void transform3_add_mul3(const float *p_src, float *r_dst, float p_weight) const {
+
+				r_dst[0] += ((mtx[0][0] * p_src[0]) + (mtx[1][0] * p_src[1]) + (mtx[2][0] * p_src[2])) * p_weight;
+				r_dst[1] += ((mtx[0][1] * p_src[0]) + (mtx[1][1] * p_src[1]) + (mtx[2][1] * p_src[2])) * p_weight;
+				r_dst[2] += ((mtx[0][2] * p_src[0]) + (mtx[1][2] * p_src[1]) + (mtx[2][2] * p_src[2])) * p_weight;
+			}
+
+			_ALWAYS_INLINE_ AABB transform_aabb(const AABB &p_aabb) const {
+
+				float vertices[8][3] = {
+					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z },
+					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z },
+					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z },
+					{ p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z },
+					{ p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z },
+					{ p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z },
+					{ p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z },
+					{ p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z }
+				};
+
+				AABB ret;
+
+				for (int i = 0; i < 8; i++) {
+
+					Vector3 xv(
+
+							((mtx[0][0] * vertices[i][0]) + (mtx[1][0] * vertices[i][1]) + (mtx[2][0] * vertices[i][2]) + mtx[3][0]),
+							((mtx[0][1] * vertices[i][0]) + (mtx[1][1] * vertices[i][1]) + (mtx[2][1] * vertices[i][2]) + mtx[3][1]),
+							((mtx[0][2] * vertices[i][0]) + (mtx[1][2] * vertices[i][1]) + (mtx[2][2] * vertices[i][2]) + mtx[3][2]));
+
+					if (i == 0)
+						ret.pos = xv;
+					else
+						ret.expand_to(xv);
+				}
+
+				return ret;
+			}
+		};
+
+		GLuint tex_id;
+		float pixel_size; //for texture
+		Vector<Bone> bones;
+
+		SelfList<Skeleton> dirty_list;
+
+		Skeleton() :
+				dirty_list(this) {
+			tex_id = 0;
+			pixel_size = 1.0;
+		}
 	};
 
 	mutable RID_Owner<Skeleton> skeleton_owner;
+	mutable SelfList<Skeleton>::List _skeleton_dirty_list;
 
+
+	template <bool USE_NORMAL, bool USE_TANGENT, bool INPLACE>
+	void _skeleton_xform(const uint8_t *p_src_array, int p_src_stride, uint8_t *p_dst_array, int p_dst_stride, int p_elements, const uint8_t *p_src_bones, const uint8_t *p_src_weights, const Skeleton::Bone *p_bone_xforms);
+
+	Vector<float> skel_default;
 
 	struct Light {
 
@@ -493,7 +568,10 @@ class RasterizerPSP : public Rasterizer {
 
 	struct SampledLight {
 
-		int w,h;
+		int w, h;
+		GLuint texture;
+		float multiplier;
+		bool is_float;
 	};
 
 	mutable RID_Owner<SampledLight> sampled_light_owner;
@@ -733,6 +811,7 @@ class RasterizerPSP : public Rasterizer {
 	float camera_z_far;
 	Size2 camera_vp_size;
 	Color last_color;
+	bool use_hw_skeleton_xform;
 
 	Plane camera_plane;
 
@@ -824,6 +903,16 @@ class RasterizerPSP : public Rasterizer {
 		int shader_change_count;
 
 	} _rinfo;
+
+	struct CanvasOccluder {
+
+		GLuint vertex_id; // 0 means, unconfigured
+		GLuint index_id; // 0 means, unconfigured
+		DVector<Vector2> lines;
+		int len;
+	};
+
+	RID_Owner<CanvasOccluder> canvas_occluder_owner;
 
 	GLuint white_tex;
 	RID canvas_tex;
@@ -1191,8 +1280,8 @@ public:
 	virtual void canvas_set_transform(const Matrix32& p_transform);
 	virtual void canvas_render_items(CanvasItem *p_item_list, int p_z, const Color &p_modulate, CanvasLight *p_light);
 	virtual void canvas_debug_viewport_shadows(CanvasLight* p_lights_with_shadow) { };
-	virtual RID canvas_light_occluder_create() { RID(); };
-	virtual void canvas_light_occluder_set_polylines(RID p_occluder, const DVector<Vector2> &p_lines) { };
+	virtual RID canvas_light_occluder_create();
+	virtual void canvas_light_occluder_set_polylines(RID p_occluder, const DVector<Vector2> &p_lines);
 	virtual RID canvas_light_shadow_buffer_create(int p_width) { return RID(); }
 	virtual void canvas_light_shadow_buffer_update(RID p_buffer, const Matrix32 &p_light_xform, int p_light_mask, float p_near, float p_far, CanvasLightOccluderInstance *p_occluders, CameraMatrix *p_xform_cache) { };
 

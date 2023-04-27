@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 	printf("Godot PSP\n");
 	OS_PSP os;
 	printf("Godot PSP OS init\n");
-	char* args[] = {"-path", "ms0:/PSP/GAME/Godot"};
+	char* args[] = {"-path", "."};
 	printf("setup\n");
 	Error err = Main::setup("psp", 2, args, true);
     printf("setup\n");
