@@ -99,7 +99,6 @@ void OS_PSP::finalize_core() {
 
 void OS_PSP::alert(const String &p_alert, const String &p_title) {
 // 	printf(p_alert);
-	printf(p_alert.utf8().get_data());
 }
 String OS_PSP::get_stdin_string(bool p_block) {
 	return "";

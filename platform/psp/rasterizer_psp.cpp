@@ -3228,6 +3228,58 @@ void RasterizerPSP::begin_frame() {
 	_rinfo.mat_change_count=0;
 	_rinfo.shader_change_count=0;
 
+	while (_skeleton_dirty_list.first()) {
+
+		Skeleton *s = _skeleton_dirty_list.first()->self();
+
+		float *sk_float = (float *)skinned_buffer;
+		for (int i = 0; i < s->bones.size(); i++) {
+
+			float *m = &sk_float[i * 12];
+			const Skeleton::Bone &b = s->bones[i];
+			m[0] = b.mtx[0][0];
+			m[1] = b.mtx[1][0];
+			m[2] = b.mtx[2][0];
+			m[3] = b.mtx[3][0];
+
+			m[4] = b.mtx[0][1];
+			m[5] = b.mtx[1][1];
+			m[6] = b.mtx[2][1];
+			m[7] = b.mtx[3][1];
+
+			m[8] = b.mtx[0][2];
+			m[9] = b.mtx[1][2];
+			m[10] = b.mtx[2][2];
+			m[11] = b.mtx[3][2];
+		}
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, s->tex_id);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, next_power_of_2(s->bones.size() * 3), 1, GL_RGBA, GL_FLOAT, sk_float);
+		_skeleton_dirty_list.remove(_skeleton_dirty_list.first());
+	}
+
+	while (_multimesh_dirty_list.first()) {
+
+		MultiMesh *s = _multimesh_dirty_list.first()->self();
+
+		float *sk_float = (float *)skinned_buffer;
+		for (int i = 0; i < s->elements.size(); i++) {
+
+			float *m = &sk_float[i * 16];
+			const float *im = s->elements[i].matrix;
+			for (int j = 0; j < 16; j++) {
+				m[j] = im[j];
+			}
+		}
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, s->tex_id);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, s->tw, s->th, GL_RGBA, GL_FLOAT, sk_float);
+		_multimesh_dirty_list.remove(_multimesh_dirty_list.first());
+	}
+
+
 
 //	material_shader.set_uniform_default(MaterialShaderGLES1::SCREENZ_SCALE, Math::fmod(time, 3600.0));
 	/* nehe ?*/

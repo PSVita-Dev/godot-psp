@@ -86,7 +86,6 @@ class OS_PSP : public OS {
 
 // 	JoyPadPSP *joy;
 	SceCtrlData pad;
-	pspUtilityMsgDialogParams dialog;
 	int last;
 
 	InputDefault *input;
