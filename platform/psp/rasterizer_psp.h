@@ -490,7 +490,6 @@ class RasterizerPSP : public Rasterizer {
 	void _skeleton_xform(const uint8_t *p_src_array, int p_src_stride, uint8_t *p_dst_array, int p_dst_stride, int p_elements, const uint8_t *p_src_bones, const uint8_t *p_src_weights, const Skeleton::Bone *p_bone_xforms);
 
 	Vector<float> skel_default;
-
 	struct Light {
 
 		VS::LightType type;
@@ -500,24 +499,34 @@ class RasterizerPSP : public Rasterizer {
 		RID projector;
 		bool volumetric_enabled;
 		Color volumetric_color;
-
+		VS::LightOmniShadowMode omni_shadow_mode;
+		VS::LightDirectionalShadowMode directional_shadow_mode;
+		float directional_shadow_param[3];
 
 		Light() {
 
-			vars[VS::LIGHT_PARAM_SPOT_ATTENUATION]=1;
-			vars[VS::LIGHT_PARAM_SPOT_ANGLE]=45;
-			vars[VS::LIGHT_PARAM_ATTENUATION]=1.0;
-			vars[VS::LIGHT_PARAM_ENERGY]=1.0;
-			vars[VS::LIGHT_PARAM_RADIUS]=1.0;
-			vars[VS::LIGHT_PARAM_SHADOW_Z_OFFSET]=0.05;
+			vars[VS::LIGHT_PARAM_SPOT_ATTENUATION] = 1;
+			vars[VS::LIGHT_PARAM_SPOT_ANGLE] = 45;
+			vars[VS::LIGHT_PARAM_ATTENUATION] = 1.0;
+			vars[VS::LIGHT_PARAM_ENERGY] = 1.0;
+			vars[VS::LIGHT_PARAM_RADIUS] = 1.0;
+			vars[VS::LIGHT_PARAM_SHADOW_DARKENING] = 0.0;
+			vars[VS::LIGHT_PARAM_SHADOW_Z_OFFSET] = 0.2;
+			vars[VS::LIGHT_PARAM_SHADOW_Z_SLOPE_SCALE] = 1.4;
+			vars[VS::LIGHT_PARAM_SHADOW_ESM_MULTIPLIER] = 60.0;
+			vars[VS::LIGHT_PARAM_SHADOW_BLUR_PASSES] = 1;
+			colors[VS::LIGHT_COLOR_DIFFUSE] = Color(1, 1, 1);
+			colors[VS::LIGHT_COLOR_SPECULAR] = Color(1, 1, 1);
+			shadow_enabled = false;
+			volumetric_enabled = false;
 
-			colors[VS::LIGHT_COLOR_DIFFUSE]=Color(1,1,1);
-			colors[VS::LIGHT_COLOR_SPECULAR]=Color(1,1,1);
-			shadow_enabled=false;
-			volumetric_enabled=false;
+			directional_shadow_param[VS::LIGHT_DIRECTIONAL_SHADOW_PARAM_PSSM_SPLIT_WEIGHT] = 0.5;
+			directional_shadow_param[VS::LIGHT_DIRECTIONAL_SHADOW_PARAM_MAX_DISTANCE] = 0;
+			directional_shadow_param[VS::LIGHT_DIRECTIONAL_SHADOW_PARAM_PSSM_ZOFFSET_SCALE] = 2.0;
+			omni_shadow_mode = VS::LIGHT_OMNI_SHADOW_DEFAULT;
+			directional_shadow_mode = VS::LIGHT_DIRECTIONAL_SHADOW_ORTHOGONAL;
 		}
 	};
-
 
 	struct Environment {
 
@@ -578,7 +587,7 @@ class RasterizerPSP : public Rasterizer {
 
 	struct ShadowBuffer;
 
-	struct LightInstance {
+struct LightInstance {
 
 		struct SplitInfo {
 
@@ -593,8 +602,8 @@ class RasterizerPSP : public Rasterizer {
 		Transform transform;
 		CameraMatrix projection;
 
-		Transform custom_transform;
-		CameraMatrix custom_projection;
+		Transform custom_transform[4];
+		CameraMatrix custom_projection[4];
 
 		Vector3 light_vector;
 		Vector3 spot_vector;
@@ -604,34 +613,44 @@ class RasterizerPSP : public Rasterizer {
 		uint64_t last_pass;
 		uint16_t sort_key;
 
-		Vector<ShadowBuffer*> shadow_buffers;
+		Vector2 dp;
+
+		CameraMatrix shadow_projection[4];
+		float shadow_split[4];
+
+		ShadowBuffer *near_shadow_buffer;
 
 		void clear_shadow_buffers() {
 
-			for (int i=0;i<shadow_buffers.size();i++) {
-
-				ShadowBuffer *sb=shadow_buffers[i];
-				ERR_CONTINUE( sb->owner != this );
-
-				sb->owner=NULL;
-			}
-
-			shadow_buffers.clear();
+			clear_near_shadow_buffers();
 		}
 
-		LightInstance() { shadow_pass=0; last_pass=0; sort_key=0; }
+		void clear_near_shadow_buffers() {
 
+			if (near_shadow_buffer) {
+				near_shadow_buffer->owner = NULL;
+				near_shadow_buffer = NULL;
+			}
+		}
+
+		LightInstance() {
+			shadow_pass = 0;
+			last_pass = 0;
+			sort_key = 0;
+			near_shadow_buffer = NULL;
+		}
 	};
 	mutable RID_Owner<Light> light_owner;
 	mutable RID_Owner<LightInstance> light_instance_owner;
 
 	LightInstance *light_instances[MAX_SCENE_LIGHTS];
 	LightInstance *directional_lights[4];
+
 //	LightInstance *directional_light_instances[MAX_SCENE_LIGHTS];
 	int light_instance_count;
 	int directional_light_count;
 	int last_light_id;
-
+	ShadowFilterTechnique shadow_filter;
 
 
 	struct RenderList {
@@ -705,6 +724,7 @@ class RasterizerPSP : public Rasterizer {
 			SortArray<Element*,SortMat> sorter;
 			sorter.sort(elements,element_count);
 		}
+
 
 		struct SortMatLight {
 
@@ -853,6 +873,7 @@ class RasterizerPSP : public Rasterizer {
 
 	Vector<ShadowBuffer> near_shadow_buffers;
 	Vector<ShadowBuffer> far_shadow_buffers;
+	ShadowBuffer blur_shadow_buffer;
 
 	LightInstance *shadow;
 	int shadow_pass;
