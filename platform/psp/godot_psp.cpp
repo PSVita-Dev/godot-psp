@@ -48,7 +48,11 @@ PSP_HEAP_SIZE_KB(-1);
 
 int main(int argc, char *argv[]) {
 	glutInit(&argc, argv);
+#ifndef _3D_DISABLED
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
+#else
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA);
+#endif
 	glutInitWindowSize(480, 272);
  	glutInitWindowPosition(0, 0);
  	glutCreateWindow("Godot");
