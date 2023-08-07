@@ -589,74 +589,42 @@ void RasterizerPSP::texture_allocate(RID p_texture,int p_width, int p_height,Ima
 
 	_get_gl_image_and_format(Image(),texture->format,texture->flags,format,components,has_alpha_cache,compressed);
 
-	bool scale_textures = (!npo2_textures_available || p_format&VS::TEXTURE_FLAG_MIPMAPS);
+	bool scale_textures = !compressed; //&& !(p_flags & VS::TEXTURE_FLAG_VIDEO_SURFACE) && (!npo2_textures_available || p_flags & VS::TEXTURE_FLAG_MIPMAPS);
 
 
 	if (scale_textures) {
 		texture->alloc_width = po2_width;
 		texture->alloc_height = po2_height;
+		//	print_line("scale because npo2: "+itos(npo2_textures_available)+" mm: "+itos(p_format&VS::TEXTURE_FLAG_MIPMAPS)+" "+itos(p_mipmap_count) );
 	} else {
 
 		texture->alloc_width = texture->width;
 		texture->alloc_height = texture->height;
 	};
 
-	//_get_gl_image_and_format(Image(),texture->format,texture->flags,format,components,has_alpha_cache,compressed);
+	if (!(p_flags & VS::TEXTURE_FLAG_VIDEO_SURFACE)) {
+		texture->alloc_height = MAX(1, texture->alloc_height / 2);
+		texture->alloc_width = MAX(1, texture->alloc_width / 2);
+	}
 
-	texture->gl_components_cache=components;
-	texture->gl_format_cache=format;
-	texture->format_has_alpha=has_alpha_cache;
-	texture->compressed=compressed;
-	texture->data_size=0;
+	// texture->gl_components_cache = components;
+	texture->gl_format_cache = format;
+	// texture->gl_internal_format_cache = internal_format;
+	texture->format_has_alpha = has_alpha_cache;
+	texture->compressed = compressed;
+	// texture->has_alpha = false; //by default it doesn't have alpha unless something with alpha is blitteds
+	texture->data_size = 0;
+	// texture->mipmaps = 0;
 
-
-	//glActiveTexture(GL_TEXTURE0);
+	// glActiveTexture(GL_TEXTURE0);
 	glBindTexture(texture->target, texture->tex_id);
 
-
-
-
-	if (compressed) {
-
-		glTexParameteri( texture->target, GL_GENERATE_MIPMAP, GL_FALSE );
-	} else {
-		if (texture->flags&VS::TEXTURE_FLAG_MIPMAPS) {
-			glTexParameteri( texture->target, GL_GENERATE_MIPMAP, GL_TRUE );
-		} else {
-			glTexParameteri( texture->target, GL_GENERATE_MIPMAP, GL_FALSE );
-		}
-
+	if (p_flags & VS::TEXTURE_FLAG_VIDEO_SURFACE) {
+		//prealloc if video
+		glTexImage2D(texture->target, 0, format, p_width, p_height, 0, format, GL_UNSIGNED_BYTE, NULL);
 	}
 
-
-	if (texture->flags&VS::TEXTURE_FLAG_MIPMAPS)
-		glTexParameteri(texture->target,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR);
-	else
-		glTexParameteri(texture->target,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-
-	if (texture->flags&VS::TEXTURE_FLAG_FILTER) {
-
-		glTexParameteri(texture->target,GL_TEXTURE_MAG_FILTER,GL_LINEAR);	// Linear Filtering
-
-	} else {
-
-		glTexParameteri(texture->target,GL_TEXTURE_MAG_FILTER,GL_NEAREST);	// raw Filtering
-
-	}
-	bool force_clamp_to_edge = !(p_flags&VS::TEXTURE_FLAG_MIPMAPS) && (next_power_of_2(texture->alloc_height)!=texture->alloc_height || next_power_of_2(texture->alloc_width)!=texture->alloc_width);
-
-	if (!force_clamp_to_edge && texture->flags&VS::TEXTURE_FLAG_REPEAT) {
-
-		glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
-		glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
-	} else {
-
-		//glTexParameterf( texture->target, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE );
-		glTexParameterf( texture->target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-		glTexParameterf( texture->target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
-	}
-
-	texture->active=true;
+	texture->active = true;
 }
 
 void RasterizerPSP::texture_set_data(RID p_texture,const Image& p_image,VS::CubeMapSide p_cube_side) {
@@ -5406,6 +5374,7 @@ void RasterizerPSP::canvas_set_blend_mode(VS::MaterialBlendMode p_mode) {
 		} break;
 
 	}
+	blend_mode = p_mode;
 
 }
 
@@ -5805,7 +5774,7 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list, int p_z, const 
 				} break;
 			}
 
-// 			canvas_blend_mode = ci->blend_mode;
+ 			blend_mode = ci->blend_mode;
 		}
 
 		canvas_opacity = ci->final_opacity;
@@ -5813,7 +5782,7 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list, int p_z, const 
 		if ((p_modulate.a > 0.001 && (!material || material->shading_mode != VS::CANVAS_ITEM_SHADING_ONLY_LIGHT) && !ci->light_masked))
 			_canvas_item_render_commands<false>(ci, current_clip, reclip);
 
-		/*if (canvas_blend_mode == VS::MATERIAL_BLEND_MODE_MIX && p_light) {
+		if (blend_mode == VS::MATERIAL_BLEND_MODE_MIX && p_light) {
 
 			CanvasLight *light = p_light;
 			bool light_used = false;
@@ -5856,6 +5825,13 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list, int p_z, const 
 
 // 					bool light_rebind = canvas_shader.bind();
 
+					Texture *t = texture_owner.get(light->texture);
+					if (!t) {
+						glBindTexture(GL_TEXTURE_2D, white_tex);
+					} else {
+
+						glBindTexture(t->target, t->tex_id);
+					}
 
 					_canvas_item_render_commands<true>(ci, current_clip, reclip); //redraw using light
 				}
@@ -5863,7 +5839,7 @@ void RasterizerPSP::canvas_render_items(CanvasItem *p_item_list, int p_z, const 
 				light = light->next_ptr;
 			}
 
-		}*/
+		}
 
 		if (reclip) {
 
