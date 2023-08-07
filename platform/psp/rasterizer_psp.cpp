@@ -587,6 +587,8 @@ void RasterizerPSP::texture_allocate(RID p_texture,int p_width, int p_height,Ima
 	texture->flags=p_flags;
 	texture->target = /*(p_flags & VS::TEXTURE_FLAG_CUBEMAP) ? GL_TEXTURE_CUBE_MAP :*/ GL_TEXTURE_2D;
 
+	_get_gl_image_and_format(Image(),texture->format,texture->flags,format,components,has_alpha_cache,compressed);
+
 	bool scale_textures = (!npo2_textures_available || p_format&VS::TEXTURE_FLAG_MIPMAPS);
 
 
@@ -599,7 +601,7 @@ void RasterizerPSP::texture_allocate(RID p_texture,int p_width, int p_height,Ima
 		texture->alloc_height = texture->height;
 	};
 
-	_get_gl_image_and_format(Image(),texture->format,texture->flags,format,components,has_alpha_cache,compressed);
+	//_get_gl_image_and_format(Image(),texture->format,texture->flags,format,components,has_alpha_cache,compressed);
 
 	texture->gl_components_cache=components;
 	texture->gl_format_cache=format;
@@ -7037,7 +7039,7 @@ void RasterizerPSP::init() {
 	glBindTexture(GL_TEXTURE_2D,white_tex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 8, 8, 0, GL_RGB, GL_UNSIGNED_BYTE,whitetexdata);
 
-	npo2_textures_available=false;
+	npo2_textures_available=true;
 	pvr_supported=extensions.has("GL_IMG_texture_compression_pvrtc");
 	etc_supported=true;
 	s3tc_supported=false;
