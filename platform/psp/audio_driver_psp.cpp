@@ -55,7 +55,8 @@ Error AudioDriverPSP::init() {
 	samples_in = memnew_arr(int32_t, buffer_size*channels);
 	samples_out = memnew_arr(int16_t, buffer_size*channels);
 
-	channel_num = sceAudioChReserve(1, PSP_AUDIO_SAMPLE_ALIGN(buffer_size*channels), PSP_AUDIO_FORMAT_MONO);
+	// channel_num = sceAudioChReserve(1, PSP_AUDIO_SAMPLE_ALIGN(buffer_size*channels), PSP_AUDIO_FORMAT_MONO);
+	sceAudioOutput2Reserve(buffer_size);
 
 	mutex = Mutex::create();
 	thread = Thread::create(AudioDriverPSP::thread_func, this);
@@ -90,22 +91,22 @@ void AudioDriverPSP::thread_func(void *p_udata) {
 
 			ad->unlock();
 
-			for(int i = 0; i < sample_count; ++i) {
+			for(int i = 0; i < sample_count*2; ++i) {
 				ad->samples_out[i] = ad->samples_in[i] >> 16;
 			}
 
 
 		} else
 		{
-			for (int i = 0; i < sample_count; i++) {
+			for (int i = 0; i < sample_count*2; i++) {
 
 				ad->samples_out[i] = 0;
 			}
 		}
-#ifdef PPSSPP
-		OS::get_singleton()->delay_usec(usdelay);
-#endif
-		sceAudioOutput(channel_num, 0x8000, ad->samples_out);
+// #ifdef PPSSPP
+// 		OS::get_singleton()->delay_usec(usdelay);
+// #endif
+		sceAudioOutput2OutputBlocking(0x8000, ad->samples_out);
 	}
 
 
@@ -143,7 +144,7 @@ void AudioDriverPSP::finish() {
 	exit_thread = true;
  	Thread::wait_to_finish(thread);
 
-	sceAudioChRelease(channel_num);
+	sceAudioOutput2Release();
 
 	if (samples_in) {
  		memdelete_arr(samples_in);
