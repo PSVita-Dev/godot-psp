@@ -595,17 +595,17 @@ void RasterizerPSP::texture_allocate(RID p_texture,int p_width, int p_height,Ima
 	if (scale_textures) {
 		texture->alloc_width = po2_width;
 		texture->alloc_height = po2_height;
-		//	print_line("scale because npo2: "+itos(npo2_textures_available)+" mm: "+itos(p_format&VS::TEXTURE_FLAG_MIPMAPS)+" "+itos(p_mipmap_count) );
+		print_line("scale because npo2: "+itos(npo2_textures_available)+" mm: "+itos(p_format&VS::TEXTURE_FLAG_MIPMAPS) );
 	} else {
 
 		texture->alloc_width = texture->width;
 		texture->alloc_height = texture->height;
 	};
 
-	if (!(p_flags & VS::TEXTURE_FLAG_VIDEO_SURFACE)) {
+	/*if (!(p_flags & VS::TEXTURE_FLAG_VIDEO_SURFACE)) {
 		texture->alloc_height = MAX(1, texture->alloc_height / 2);
 		texture->alloc_width = MAX(1, texture->alloc_width / 2);
-	}
+	}*/
 
 	// texture->gl_components_cache = components;
 	texture->gl_format_cache = format;
