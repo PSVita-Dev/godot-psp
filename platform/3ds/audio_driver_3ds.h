@@ -1,12 +1,11 @@
 /*************************************************************************/
-/*  dir_access_unix.h                                                    */
+/*  audio_driver_3ds.h                                                   */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
+/*                    http://www.godotengine.org                         */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2016 Juan Linietsky, Ariel Manzur.                 */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,63 +26,59 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+#ifndef AUDIO_DRIVER_PSP_H
+#define AUDIO_DRIVER_PSP_H
 
-#ifndef DIR_ACCESS_UNIX_H
-#define DIR_ACCESS_UNIX_H
+#include "servers/audio/audio_server_sw.h"
 
-#if defined(UNIX_ENABLED) || defined(LIBC_FILEIO_ENABLED) || defined(PSP_ENABLED) || defined(__3DS__)
+#include "core/os/thread.h"
+#include "core/os/mutex.h"
 
-#include <dirent.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <pspaudio.h>
+#include <pspaudiolib.h>
+#include <pspthreadman.h>
+#include <pspkerneltypes.h>
 
-#include "os/dir_access.h"
+class AudioDriverPSP : public AudioDriverSW {
 
-/**
-	@author Juan Linietsky <reduzio@gmail.com>
-*/
-class DirAccessUnix : public DirAccess {
+	Thread *thread;
+	Mutex *mutex;
+	int32_t* samples_in;
+	int16_t* samples_out;
+	int id;
 
-	DIR *dir_stream;
+	static void thread_func(void *p_udata);
 
-	static DirAccess *create_fs();
 
-	String current_dir;
-	bool _cisdir;
-	bool _cishidden;
+	int buffer_size;
 
-protected:
-	virtual String fix_unicode_name(const char *p_name) const { return String::utf8(p_name); }
+	unsigned int mix_rate;
+	OutputFormat output_format;
+
+	int channels;
+
+	bool active;
+	bool thread_exited;
+	bool exit_thread;
+	bool pcm_open;
 
 public:
-	virtual bool list_dir_begin(); ///< This starts dir listing
-	virtual String get_next();
-	virtual bool current_is_dir() const;
-	virtual bool current_is_hidden() const;
 
-	virtual void list_dir_end(); ///<
+	const char* get_name() const {
+		return "PSP Audio";
+	};
 
-	virtual int get_drive_count();
-	virtual String get_drive(int p_drive);
+	virtual Error init();
+	virtual void start();
+	virtual int get_mix_rate() const;
+	virtual OutputFormat get_output_format() const;
 
-	virtual Error change_dir(String p_dir); ///< can be relative or absolute, return false on success
-	virtual String get_current_dir(); ///< return current dir location
-	virtual Error make_dir(String p_dir);
+	virtual void lock();
+	virtual void unlock();
+	virtual void finish();
 
-	virtual bool file_exists(String p_file);
-	virtual bool dir_exists(String p_dir);
-
-	virtual uint64_t get_modified_time(String p_file);
-
-	virtual Error rename(String p_from, String p_to);
-	virtual Error remove(String p_name);
-
-	virtual size_t get_space_left();
-
-	DirAccessUnix();
-	~DirAccessUnix();
+	AudioDriverPSP();
+	~AudioDriverPSP();
 };
 
-#endif //UNIX ENABLED
 #endif

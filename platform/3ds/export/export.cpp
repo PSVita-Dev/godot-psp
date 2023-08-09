@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  dir_access_unix.h                                                    */
+/*  export.cpp                                                           */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,62 +28,24 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef DIR_ACCESS_UNIX_H
-#define DIR_ACCESS_UNIX_H
+#include "export.h"
+#include "editor/editor_import_export.h"
+#include "platform/3ds/logo.gen.h"
+#include "scene/resources/texture.h"
 
-#if defined(UNIX_ENABLED) || defined(LIBC_FILEIO_ENABLED) || defined(PSP_ENABLED) || defined(__3DS__)
+void register_3ds_exporter() {
 
-#include <dirent.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
+	Image img(_psp_logo);
+	Ref<ImageTexture> logo = memnew(ImageTexture);
+	logo->create_from_image(img);
 
-#include "os/dir_access.h"
-
-/**
-	@author Juan Linietsky <reduzio@gmail.com>
-*/
-class DirAccessUnix : public DirAccess {
-
-	DIR *dir_stream;
-
-	static DirAccess *create_fs();
-
-	String current_dir;
-	bool _cisdir;
-	bool _cishidden;
-
-protected:
-	virtual String fix_unicode_name(const char *p_name) const { return String::utf8(p_name); }
-
-public:
-	virtual bool list_dir_begin(); ///< This starts dir listing
-	virtual String get_next();
-	virtual bool current_is_dir() const;
-	virtual bool current_is_hidden() const;
-
-	virtual void list_dir_end(); ///<
-
-	virtual int get_drive_count();
-	virtual String get_drive(int p_drive);
-
-	virtual Error change_dir(String p_dir); ///< can be relative or absolute, return false on success
-	virtual String get_current_dir(); ///< return current dir location
-	virtual Error make_dir(String p_dir);
-
-	virtual bool file_exists(String p_file);
-	virtual bool dir_exists(String p_dir);
-
-	virtual uint64_t get_modified_time(String p_file);
-
-	virtual Error rename(String p_from, String p_to);
-	virtual Error remove(String p_name);
-
-	virtual size_t get_space_left();
-
-	DirAccessUnix();
-	~DirAccessUnix();
-};
-
-#endif //UNIX ENABLED
-#endif
+	{
+		Ref<EditorExportPlatformPC> exporter = Ref<EditorExportPlatformPC>(memnew(EditorExportPlatformPC));
+		exporter->set_binary_extension("cia");
+		exporter->set_release_binary32("godot.cia");
+		exporter->set_name("Nintendo 3DS");
+		exporter->set_logo(logo);
+		exporter->set_chmod_flags(0755);
+		EditorImportExport::get_singleton()->add_export_platform(exporter);
+	}
+}

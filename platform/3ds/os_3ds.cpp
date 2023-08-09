@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  OS_PSP.cpp                                                        */
+/*  OS_3DS.cpp                                                        */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "os_psp.h"
+#include "os_3ds.h"
 #include "print_string.h"
 #include "servers/physics/physics_server_sw.h"
 #include "servers/visual/rasterizer_dummy.h"
@@ -48,26 +48,26 @@
 #include "main/main.h"
 
 #include <unistd.h>
-#include <GL/glut.h>
+// #include <GL/gl3ds.h>
 #include <sys/time.h>
 
 
-int OS_PSP::get_video_driver_count() const {
+int OS_3DS::get_video_driver_count() const {
 
 	return 1;
 }
-const char *OS_PSP::get_video_driver_name(int p_driver) const {
+const char *OS_3DS::get_video_driver_name(int p_driver) const {
 
-	return "PSP";
+	return "picaGL";
 }
-OS::VideoMode OS_PSP::get_default_video_mode() const {
+OS::VideoMode OS_3DS::get_default_video_mode() const {
 
-	return OS::VideoMode(480, 272, false);
+	return OS::VideoMode(800, 480, false);
 }
 static MemoryPoolStaticMalloc *mempool_static=NULL;
 static MemoryPoolDynamicStatic *mempool_dynamic=NULL;
 
-void OS_PSP::initialize_core() {
+void OS_3DS::initialize_core() {
 
 	printf("init core\n");
  	ThreadPosix::make_default();
@@ -90,55 +90,55 @@ void OS_PSP::initialize_core() {
 	DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_FILESYSTEM);
 }
 
-void OS_PSP::finalize_core() {
+void OS_3DS::finalize_core() {
 	if (mempool_dynamic)
 		memdelete( mempool_dynamic );
 	delete mempool_static;
 }
 
 
-void OS_PSP::alert(const String &p_alert, const String &p_title) {
+void OS_3DS::alert(const String &p_alert, const String &p_title) {
 // 	printf(p_alert);
 }
-String OS_PSP::get_stdin_string(bool p_block) {
+String OS_3DS::get_stdin_string(bool p_block) {
 	return "";
 }
 
-Error OS_PSP::execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {
+Error OS_3DS::execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {
 	return FAILED;
 }
 
-Error OS_PSP::kill(const ProcessID &p_pid) {
+Error OS_3DS::kill(const ProcessID &p_pid) {
 	return FAILED;
 }
-bool OS_PSP::has_environment(const String &p_var) const {
+bool OS_3DS::has_environment(const String &p_var) const {
 	return false;
 }
-String OS_PSP::get_environment(const String &p_var) const {
+String OS_3DS::get_environment(const String &p_var) const {
 	return "";
 }
 
-OS::Date OS_PSP::get_date(bool local) const {
+OS::Date OS_3DS::get_date(bool local) const {
 	Date ret;
 	return ret;
 }
 
-OS::Time OS_PSP::get_time(bool local) const {
+OS::Time OS_3DS::get_time(bool local) const {
 	Time ret;
 	return ret;
 }
 
-OS::TimeZoneInfo OS_PSP::get_time_zone_info() const{
+OS::TimeZoneInfo OS_3DS::get_time_zone_info() const{
 	TimeZoneInfo ret;
 	return ret;
 }
 
-void OS_PSP::delay_usec(uint32_t p_usec) const{
+void OS_3DS::delay_usec(uint32_t p_usec) const{
 // 	printf("delay_usec: %lu\n", p_usec);
 	usleep(p_usec);
 }
 
-uint64_t OS_PSP::get_ticks_usec() const{
+uint64_t OS_3DS::get_ticks_usec() const{
 	struct timeval tv_now;
 	gettimeofday(&tv_now, NULL);
 
@@ -148,7 +148,7 @@ uint64_t OS_PSP::get_ticks_usec() const{
 	return longtime;
 }
 
-void OS_PSP::vprint(const char* p_format, va_list p_list,bool p_stder)
+void OS_3DS::vprint(const char* p_format, va_list p_list,bool p_stder)
 {
 	if (p_stder) {
 		vfprintf(stderr,p_format,p_list);
@@ -159,7 +159,7 @@ void OS_PSP::vprint(const char* p_format, va_list p_list,bool p_stder)
 	}
 }
 
-void OS_PSP::initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) {
+void OS_3DS::initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) {
 
 // 	args = OS::get_singleton()->get_cmdline_args();
 	current_videomode = p_desired;
@@ -167,9 +167,9 @@ void OS_PSP::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 
 	init_keys();
 
-// 	rasterizer_psp = memnew(RasterizerPSP);
+// 	rasterizer_3DS = memnew(Rasterizer3DS);
 
-	rasterizer = memnew(RasterizerPSP);
+	rasterizer = memnew(Rasterizer3DS);
 
 
 	visual_server = memnew(VisualServerRaster(rasterizer));
@@ -201,7 +201,7 @@ void OS_PSP::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 
 	_ensure_data_dir();
 }
-void OS_PSP::finalize() {
+void OS_3DS::finalize() {
 
 	if (main_loop)
 		memdelete(main_loop);
@@ -236,83 +236,83 @@ void OS_PSP::finalize() {
 	args.clear();
 }
 
-void OS_PSP::set_mouse_show(bool p_show) {
+void OS_3DS::set_mouse_show(bool p_show) {
 }
-void OS_PSP::set_mouse_grab(bool p_grab) {
+void OS_3DS::set_mouse_grab(bool p_grab) {
 
 	grab = p_grab;
 }
-bool OS_PSP::is_mouse_grab_enabled() const {
+bool OS_3DS::is_mouse_grab_enabled() const {
 
 	return grab;
 }
 
-int OS_PSP::get_mouse_button_state() const {
+int OS_3DS::get_mouse_button_state() const {
 
 	return 0;
 }
 
-Point2 OS_PSP::get_mouse_pos() const {
+Point2 OS_3DS::get_mouse_pos() const {
 
 	return Point2();
 }
 
-void OS_PSP::set_window_title(const String &p_title) {
+void OS_3DS::set_window_title(const String &p_title) {
 }
 
-void OS_PSP::set_video_mode(const VideoMode &p_video_mode, int p_screen) {
+void OS_3DS::set_video_mode(const VideoMode &p_video_mode, int p_screen) {
 }
-OS::VideoMode OS_PSP::get_video_mode(int p_screen) const {
+OS::VideoMode OS_3DS::get_video_mode(int p_screen) const {
 
 	return current_videomode;
 }
 
-Size2 OS_PSP::get_window_size() const {
+Size2 OS_3DS::get_window_size() const {
 
 	return Vector2(current_videomode.width, current_videomode.height);
 }
 
-void OS_PSP::get_fullscreen_mode_list(List<VideoMode> *p_list, int p_screen) const {
+void OS_3DS::get_fullscreen_mode_list(List<VideoMode> *p_list, int p_screen) const {
 }
 
-const char *OS_PSP::get_audio_driver_name(int p_driver) const{
-	return "PSP";
+const char *OS_3DS::get_audio_driver_name(int p_driver) const{
+	return "3DS";
 }
-int OS_PSP::get_audio_driver_count() const{
+int OS_3DS::get_audio_driver_count() const{
 	return 0;
 }
 
-MainLoop *OS_PSP::get_main_loop() const {
+MainLoop *OS_3DS::get_main_loop() const {
 
 	return main_loop;
 }
 
-void OS_PSP::init_keys() {
-	sceCtrlSetSamplingCycle(0);
-	sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
+void OS_3DS::init_keys() {
+	// sceCtrlSetSamplingCycle(0);
+	// sceCtrlSetSamplingMode(3DS_CTRL_MODE_ANALOG);
 }
 
-PspCtrlButtons buttons[16] = {
-		PSP_CTRL_CROSS,
-		PSP_CTRL_CIRCLE,
-		PSP_CTRL_SQUARE,
-		PSP_CTRL_TRIANGLE,
-		(PspCtrlButtons)0,
-		(PspCtrlButtons)0,
-		PSP_CTRL_LTRIGGER,
-		PSP_CTRL_RTRIGGER,
-		(PspCtrlButtons)0,
-		(PspCtrlButtons)0,
-		PSP_CTRL_SELECT,
-		PSP_CTRL_START,
-		PSP_CTRL_UP,
-		PSP_CTRL_DOWN,
-		PSP_CTRL_LEFT,
-		PSP_CTRL_RIGHT
-};
-
-void OS_PSP::process_keys() {
-	sceCtrlReadBufferPositive(&pad, 1);
+// 3DSCtrlButtons buttons[16] = {
+// 		3DS_CTRL_CROSS,
+// 		3DS_CTRL_CIRCLE,
+// 		3DS_CTRL_SQUARE,
+// 		3DS_CTRL_TRIANGLE,
+// 		(3DSCtrlButtons)0,
+// 		(3DSCtrlButtons)0,
+// 		3DS_CTRL_LTRIGGER,
+// 		3DS_CTRL_RTRIGGER,
+// 		(3DSCtrlButtons)0,
+// 		(3DSCtrlButtons)0,
+// 		3DS_CTRL_SELECT,
+// 		3DS_CTRL_START,
+// 		3DS_CTRL_UP,
+// 		3DS_CTRL_DOWN,
+// 		3DS_CTRL_LEFT,
+// 		3DS_CTRL_RIGHT
+// };
+/*
+void OS_3DS::process_keys() {
+	// sceCtrlReadBufferPositive(&pad, 1);
 
 	last++;
 
@@ -335,43 +335,43 @@ void OS_PSP::process_keys() {
 	input->joy_axis(0, 0, 0, lx);
 	input->joy_axis(0, 0, 1, ly);
 
-	if(pad.Buttons & PSP_CTRL_HOME)
-		sceKernelExitGame();
-}
+	// if(pad.Buttons & 3DS_CTRL_HOME)
+		// sceKernelExitGame();
+}*/
 
-void OS_PSP::delete_main_loop() {
+void OS_3DS::delete_main_loop() {
 
 	if (main_loop)
 		memdelete(main_loop);
 	main_loop = NULL;
 }
 
-void OS_PSP::set_main_loop(MainLoop *p_main_loop) {
+void OS_3DS::set_main_loop(MainLoop *p_main_loop) {
 
 	main_loop = p_main_loop;
 	input->set_main_loop(p_main_loop);
 }
 
-bool OS_PSP::can_draw() const {
+bool OS_3DS::can_draw() const {
 
 	return true; //can draw
 };
 
-String OS_PSP::get_name() {
+String OS_3DS::get_name() {
 
-	return "Playstation Portable";
+	return "Nintendo 3DS";
 }
 
-void OS_PSP::move_window_to_foreground() {
+void OS_3DS::move_window_to_foreground() {
 }
 
-void OS_PSP::set_cursor_shape(CursorShape p_shape) {
+void OS_3DS::set_cursor_shape(CursorShape p_shape) {
 }
 
-void OS_PSP::set_custom_mouse_cursor(const RES &p_cursor, CursorShape p_shape, const Vector2 &p_hotspot) {
+void OS_3DS::set_custom_mouse_cursor(const RES &p_cursor, CursorShape p_shape, const Vector2 &p_hotspot) {
 }
 
-void OS_PSP::run() {
+void OS_3DS::run() {
 
 	force_quit = false;
 
@@ -380,9 +380,9 @@ void OS_PSP::run() {
 
 	main_loop->init();
 
-	while (!force_quit) {
+	while (aptMainLoop()) {
 
-		process_keys();
+		// process_keys();
 // 		visual_server->draw();
 
 		if (Main::iteration() == true)
@@ -392,13 +392,13 @@ void OS_PSP::run() {
 	main_loop->finish();
 }
 
-void OS_PSP::swap_buffers() {
-	glutSwapBuffers();
-// 	printf("swap_buffers, dont do it like this\n");
+void OS_3DS::swap_buffers() {
+	pglSwapBuffers();
 }
 
-OS_PSP::OS_PSP() {
-	AudioDriverManagerSW::add_driver(&audio_driver);
+OS_3DS::OS_3DS() {
+	osSetSpeedupEnable(true);
+	// AudioDriverManagerSW::add_driver(&audio_driver);
 	//adriver here
  	_render_thread_mode=RENDER_THREAD_UNSAFE;;
 	grab = false;

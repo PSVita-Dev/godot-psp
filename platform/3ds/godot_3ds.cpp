@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  dir_access_unix.h                                                    */
+/*  godot_server.cpp                                                     */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,62 +28,40 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef DIR_ACCESS_UNIX_H
-#define DIR_ACCESS_UNIX_H
+#define Thread Lib3dsThread
+#include <3ds.h>
+#include <GL/picaGL.h>
+#undef Thread
 
-#if defined(UNIX_ENABLED) || defined(LIBC_FILEIO_ENABLED) || defined(PSP_ENABLED) || defined(__3DS__)
+#include "main/main.h"
 
-#include <dirent.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include "os_3ds.h"
 
-#include "os/dir_access.h"
+int main(int argc, char *argv[]) {
+	gfxInitDefault();
+	consoleInit(GFX_BOTTOM, NULL);
 
-/**
-	@author Juan Linietsky <reduzio@gmail.com>
-*/
-class DirAccessUnix : public DirAccess {
+	pglInit();
 
-	DIR *dir_stream;
+	// pglSelectScreen(GFX_TOP, GFX_LEFT);
 
-	static DirAccess *create_fs();
+	printf("Godot 3DS\n");
+	OS_3DS os;
+	printf("Godot 3DS OS init\n");
+	char* args[] = {"-path", "."};
+	printf("setup\n");
+	// while(1) { };
+	Error err = Main::setup("3ds", 2, args, true);
+    printf("setup\n");
+	if (err==OK)
+	{
+		printf("Running...\n");
 
-	String current_dir;
-	bool _cisdir;
-	bool _cishidden;
+		if (Main::start())
+	 		os.run(); // it is actually the OS that decides how to run
+	 	Main::cleanup();
+	}
 
-protected:
-	virtual String fix_unicode_name(const char *p_name) const { return String::utf8(p_name); }
-
-public:
-	virtual bool list_dir_begin(); ///< This starts dir listing
-	virtual String get_next();
-	virtual bool current_is_dir() const;
-	virtual bool current_is_hidden() const;
-
-	virtual void list_dir_end(); ///<
-
-	virtual int get_drive_count();
-	virtual String get_drive(int p_drive);
-
-	virtual Error change_dir(String p_dir); ///< can be relative or absolute, return false on success
-	virtual String get_current_dir(); ///< return current dir location
-	virtual Error make_dir(String p_dir);
-
-	virtual bool file_exists(String p_file);
-	virtual bool dir_exists(String p_dir);
-
-	virtual uint64_t get_modified_time(String p_file);
-
-	virtual Error rename(String p_from, String p_to);
-	virtual Error remove(String p_name);
-
-	virtual size_t get_space_left();
-
-	DirAccessUnix();
-	~DirAccessUnix();
-};
-
-#endif //UNIX ENABLED
-#endif
+	pglExit();
+	return 0;
+}
