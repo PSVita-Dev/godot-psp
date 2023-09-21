@@ -2685,7 +2685,7 @@ RID RasterizerPSP::skeleton_create() {
 	ERR_FAIL_COND_V(!skeleton,RID());
 	return skeleton_owner.make_rid( skeleton );
 }
-
+#if 0
 template <bool USE_NORMAL, bool USE_TANGENT, bool INPLACE>
 void RasterizerPSP::_skeleton_xform(const uint8_t *p_src_array, int p_src_stride, uint8_t *p_dst_array, int p_dst_stride, int p_elements, const uint8_t *p_src_bones, const uint8_t *p_src_weights, const Skeleton::Bone *p_bone_xforms) {
 
@@ -2784,47 +2784,16 @@ void RasterizerPSP::_skeleton_xform(const uint8_t *p_src_array, int p_src_stride
 		}
 	}
 }
-
+#endif
 void RasterizerPSP::skeleton_resize(RID p_skeleton,int p_bones) {
 
-	Skeleton *skeleton = skeleton_owner.get(p_skeleton);
+
+	Skeleton *skeleton = skeleton_owner.get( p_skeleton );
 	ERR_FAIL_COND(!skeleton);
 	if (p_bones == skeleton->bones.size()) {
 		return;
 	};
-	if (use_hw_skeleton_xform) {
 
-		if (next_power_of_2(p_bones) != next_power_of_2(skeleton->bones.size())) {
-			if (skeleton->tex_id) {
-				glDeleteTextures(1, &skeleton->tex_id);
-				skeleton->tex_id = 0;
-			}
-
-			if (p_bones) {
-
-				glGenTextures(1, &skeleton->tex_id);
-// 				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, skeleton->tex_id);
-				int ps = next_power_of_2(p_bones * 3);
-#ifdef GLEW_ENABLED
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, ps, 1, 0, GL_RGBA, GL_FLOAT, skel_default.ptr());
-#else
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ps, 1, 0, GL_RGBA, GL_FLOAT, skel_default.ptr());
-#endif
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-				skeleton->pixel_size = 1.0 / ps;
-
-				glBindTexture(GL_TEXTURE_2D, 0);
-			}
-		}
-
-		if (!skeleton->dirty_list.in_list()) {
-			_skeleton_dirty_list.add(&skeleton->dirty_list);
-		}
-	}
 	skeleton->bones.resize(p_bones);
 
 }
@@ -2837,55 +2806,22 @@ int RasterizerPSP::skeleton_get_bone_count(RID p_skeleton) const {
 void RasterizerPSP::skeleton_bone_set_transform(RID p_skeleton,int p_bone, const Transform& p_transform) {
 
 
-	Skeleton *skeleton = skeleton_owner.get(p_skeleton);
+
+	Skeleton *skeleton = skeleton_owner.get( p_skeleton );
 	ERR_FAIL_COND(!skeleton);
-	ERR_FAIL_INDEX(p_bone, skeleton->bones.size());
+	ERR_FAIL_INDEX( p_bone, skeleton->bones.size() );
 
-	Skeleton::Bone &b = skeleton->bones[p_bone];
-
-	b.mtx[0][0] = p_transform.basis[0][0];
-	b.mtx[0][1] = p_transform.basis[1][0];
-	b.mtx[0][2] = p_transform.basis[2][0];
-	b.mtx[1][0] = p_transform.basis[0][1];
-	b.mtx[1][1] = p_transform.basis[1][1];
-	b.mtx[1][2] = p_transform.basis[2][1];
-	b.mtx[2][0] = p_transform.basis[0][2];
-	b.mtx[2][1] = p_transform.basis[1][2];
-	b.mtx[2][2] = p_transform.basis[2][2];
-	b.mtx[3][0] = p_transform.origin[0];
-	b.mtx[3][1] = p_transform.origin[1];
-	b.mtx[3][2] = p_transform.origin[2];
-
-	if (skeleton->tex_id) {
-		if (!skeleton->dirty_list.in_list()) {
-			_skeleton_dirty_list.add(&skeleton->dirty_list);
-		}
-	}
+	skeleton->bones[p_bone] = p_transform;
 }
 
 Transform RasterizerPSP::skeleton_bone_get_transform(RID p_skeleton,int p_bone) {
 
-	Skeleton *skeleton = skeleton_owner.get(p_skeleton);
+	Skeleton *skeleton = skeleton_owner.get( p_skeleton );
 	ERR_FAIL_COND_V(!skeleton, Transform());
-	ERR_FAIL_INDEX_V(p_bone, skeleton->bones.size(), Transform());
+	ERR_FAIL_INDEX_V( p_bone, skeleton->bones.size(), Transform() );
 
-	const Skeleton::Bone &b = skeleton->bones[p_bone];
-
-	Transform t;
-	t.basis[0][0] = b.mtx[0][0];
-	t.basis[1][0] = b.mtx[0][1];
-	t.basis[2][0] = b.mtx[0][2];
-	t.basis[0][1] = b.mtx[1][0];
-	t.basis[1][1] = b.mtx[1][1];
-	t.basis[2][1] = b.mtx[1][2];
-	t.basis[0][2] = b.mtx[2][0];
-	t.basis[1][2] = b.mtx[2][1];
-	t.basis[2][2] = b.mtx[2][2];
-	t.origin[0] = b.mtx[3][0];
-	t.origin[1] = b.mtx[3][1];
-	t.origin[2] = b.mtx[3][2];
-
-	return t;
+	// something
+	return skeleton->bones[p_bone];
 }
 
 
@@ -3241,37 +3177,6 @@ void RasterizerPSP::begin_frame() {
 	_rinfo.object_count=0;
 	_rinfo.mat_change_count=0;
 	_rinfo.shader_change_count=0;
-
-	while (_skeleton_dirty_list.first()) {
-
-		Skeleton *s = _skeleton_dirty_list.first()->self();
-
-		float *sk_float = (float *)skinned_buffer;
-		for (int i = 0; i < s->bones.size(); i++) {
-
-			float *m = &sk_float[i * 12];
-			const Skeleton::Bone &b = s->bones[i];
-			m[0] = b.mtx[0][0];
-			m[1] = b.mtx[1][0];
-			m[2] = b.mtx[2][0];
-			m[3] = b.mtx[3][0];
-
-			m[4] = b.mtx[0][1];
-			m[5] = b.mtx[1][1];
-			m[6] = b.mtx[2][1];
-			m[7] = b.mtx[3][1];
-
-			m[8] = b.mtx[0][2];
-			m[9] = b.mtx[1][2];
-			m[10] = b.mtx[2][2];
-			m[11] = b.mtx[3][2];
-		}
-
-// 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, s->tex_id);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, next_power_of_2(s->bones.size() * 3), 1, GL_RGBA, GL_FLOAT, sk_float);
-		_skeleton_dirty_list.remove(_skeleton_dirty_list.first());
-	}
 
 
 
@@ -4202,24 +4107,85 @@ Error RasterizerPSP::_setup_geometry(const Geometry *p_geometry, const Material*
 					stride=dst_stride;
 				}
 
-// 			printf("skeleton_valid%d\n", skeleton_valid);
-			if (skeleton_valid) {
+
+				if (skeleton_valid) {
 					//transform stuff
-						const uint8_t *src_weights = &surf->array_local[surf->array[VS::ARRAY_WEIGHTS].ofs];
-						const uint8_t *src_bones = &surf->array_local[surf->array[VS::ARRAY_BONES].ofs];
-						const Skeleton::Bone *skeleton = &p_skeleton->bones[0];
 
-						if (surf->format & VS::ARRAY_FORMAT_NORMAL && surf->format & VS::ARRAY_FORMAT_TANGENT)
-							_skeleton_xform<true, true, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
-						else if (surf->format & (VS::ARRAY_FORMAT_NORMAL))
-							_skeleton_xform<true, false, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
-						else if (surf->format & (VS::ARRAY_FORMAT_TANGENT))
-							_skeleton_xform<false, true, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
-						else
-							_skeleton_xform<false, false, true>(base, surf->stride, base, surf->stride, surf->array_len, src_bones, src_weights, skeleton);
+					const uint8_t *src_weights=&surf->array_local[surf->array[VS::ARRAY_WEIGHTS].ofs];
+					const uint8_t *src_bones=&surf->array_local[surf->array[VS::ARRAY_BONES].ofs];
+					int src_stride = surf->stride;
+					int count = surf->array_len;
+					const Transform *skeleton = &p_skeleton->bones[0];
+
+					for(int i=0;i<VS::ARRAY_MAX-1;i++) {
+
+						const Surface::ArrayData& ad=surf->array[i];
+						if (ad.size==0)
+							continue;
+
+						int ofs = ad.ofs;
 
 
-			}
+						switch(i) {
+
+							case VS::ARRAY_VERTEX: {
+								for(int k=0;k<count;k++) {
+
+									float *ptr=  (float*)&base[ofs+k*stride];
+									const GLfloat* weights = reinterpret_cast<const GLfloat*>(&src_weights[k*src_stride]);
+									const GLfloat *bones = reinterpret_cast<const GLfloat*>(&src_bones[k*src_stride]);
+
+									Vector3 src( ptr[0], ptr[1], ptr[2] );
+									Vector3 dst;
+									for(int j=0;j<VS::ARRAY_WEIGHTS_SIZE;j++) {
+
+										float w = weights[j];
+										if (w==0)
+											break;
+
+										//print_line("accum "+itos(i)+" += "+rtos(Math::ftoi(bones[j]))+" * "+skeleton[ Math::ftoi(bones[j]) ]+" * "+rtos(w));
+										dst+=skeleton[ Math::fast_ftoi(bones[j]) ].xform(src) * w;
+									}
+
+									ptr[0]=dst.x;
+									ptr[1]=dst.y;
+									ptr[2]=dst.z;
+
+								} break;
+
+							} break;
+							case VS::ARRAY_NORMAL:
+							case VS::ARRAY_TANGENT: {
+								for(int k=0;k<count;k++) {
+
+									float *ptr=  (float*)&base[ofs+k*stride];
+									const GLfloat* weights = reinterpret_cast<const GLfloat*>(&src_weights[k*src_stride]);
+									const GLfloat *bones = reinterpret_cast<const GLfloat*>(&src_bones[k*src_stride]);
+
+									Vector3 src( ptr[0], ptr[1], ptr[2] );
+									Vector3 dst;
+									for(int j=0;j<VS::ARRAY_WEIGHTS_SIZE;j++) {
+
+										float w = weights[j];
+										if (w==0)
+											break;
+
+										//print_line("accum "+itos(i)+" += "+rtos(Math::ftoi(bones[j]))+" * "+skeleton[ Math::ftoi(bones[j]) ]+" * "+rtos(w));
+										dst+=skeleton[ Math::fast_ftoi(bones[j]) ].basis.xform(src) * w;
+									}
+
+									ptr[0]=dst.x;
+									ptr[1]=dst.y;
+									ptr[2]=dst.z;
+
+								} break;
+
+							} break;
+						}
+					}
+
+				}
+
 
 			} else {
 
@@ -6690,11 +6656,6 @@ void RasterizerPSP::free(const RID& p_rid) {
 		Skeleton *skeleton = skeleton_owner.get(p_rid);
 		ERR_FAIL_COND(!skeleton);
 
-		if (skeleton->dirty_list.in_list())
-			_skeleton_dirty_list.remove(&skeleton->dirty_list);
-		if (skeleton->tex_id) {
-			glDeleteTextures(1, &skeleton->tex_id);
-		}
 		skeleton_owner.free(p_rid);
 		memdelete(skeleton);
 	} else if (particles_owner.owns(p_rid)) {

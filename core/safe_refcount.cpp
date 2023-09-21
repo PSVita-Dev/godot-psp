@@ -32,7 +32,7 @@
 
 // Atomic functions, these are used for multithread safe reference counters!
 
-#ifdef PSP_ENABLED
+#if defined(PSP_ENABLED) || defined(__WIIU__)
 
 /* Bogus implementation unaware of multiprocessing */
 

@@ -21,5 +21,9 @@ env.Command(
 )
 
 env.Command(
-	"#bin/EBOOT.PBP", "#bin/strip.elf" ,"pack-pbp bin/EBOOT.PBP bin/PARAM.SFO NULL          NULL NULL NULL          NULL  bin/strip.elf NULL"
+	"#bin/strip2.elf", "#bin/strip.elf" ,"psp-strip bin/strip.elf -o bin/strip2.elf"
+)
+
+env.Command(
+	"#bin/EBOOT.PBP", "#bin/strip2.elf" ,"pack-pbp bin/EBOOT.PBP bin/PARAM.SFO NULL          NULL NULL NULL          NULL  bin/strip2.elf NULL"
 )

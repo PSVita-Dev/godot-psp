@@ -31,7 +31,7 @@
 #ifndef MUTEX_POSIX_H
 #define MUTEX_POSIX_H
 
-#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED)
+#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED) && !defined(__WIIU__)
 
 #include "os/mutex.h"
 #include <pthread.h>
