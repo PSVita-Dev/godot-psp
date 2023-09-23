@@ -48,7 +48,8 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER | THREAD_ATTR_VFPU);
 PSP_HEAP_SIZE_KB(-1);
 
 int main(int argc, char *argv[]) {
-	scePowerSetClockFrequency(333, 333, 167);
+	scePowerSetCpuClockFrequency(333);
+	scePowerSetBusClockFrequency(167);
 	glutInit(&argc, argv);
 
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
