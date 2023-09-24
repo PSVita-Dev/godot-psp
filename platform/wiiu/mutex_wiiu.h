@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  semaphore_posix.cpp                                                  */
+/*  mutex_posix.h                                                        */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,60 +28,34 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "semaphore_posix.h"
+#ifndef MUTEX_WIIU_H
+#define MUTEX_WIIU_H
 
-#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED) && !defined(PSP_ENABLED) && !defined(__WII__)
+#if defined(__WIIU__)
 
-#include "os/memory.h"
-#include <errno.h>
+#include "os/mutex.h"
+#include <mutex>
 #include <stdio.h>
 
-Error SemaphorePosix::wait() {
+class MutexWiiu : public Mutex {
 
-	while (sem_wait(&sem)) {
-		if (errno == EINTR) {
-			errno = 0;
-			continue;
-		} else {
-			perror("sem waiting");
-			return ERR_BUSY;
-		}
-	}
-	return OK;
-}
+	// pthread_mutexattr_t attr;
+	std::recursive_mutex mutex;
 
-Error SemaphorePosix::post() {
+	static Mutex *create_func_wiiu(bool p_recursive);
 
-	return (sem_post(&sem) == 0) ? OK : ERR_BUSY;
-}
-int SemaphorePosix::get() const {
+public:
+	virtual void lock();
+	virtual void unlock();
+	virtual Error try_lock();
 
-	int val;
-	sem_getvalue(&sem, &val);
+	static void make_default();
 
-	return val;
-}
+	MutexWiiu(bool p_recursive);
 
-Semaphore *SemaphorePosix::create_semaphore_posix() {
+	~MutexWiiu();
+};
 
-	return memnew(SemaphorePosix);
-}
-
-void SemaphorePosix::make_default() {
-
-	create_func = create_semaphore_posix;
-}
-
-SemaphorePosix::SemaphorePosix() {
-
-	int r = sem_init(&sem, 0, 0);
-	if (r != 0)
-		perror("sem creating");
-}
-
-SemaphorePosix::~SemaphorePosix() {
-
-	sem_destroy(&sem);
-}
+#endif
 
 #endif

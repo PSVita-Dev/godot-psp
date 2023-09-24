@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  semaphore_posix.cpp                                                  */
+/*  export.h                                                             */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,60 +28,4 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "semaphore_posix.h"
-
-#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED) && !defined(PSP_ENABLED) && !defined(__WII__)
-
-#include "os/memory.h"
-#include <errno.h>
-#include <stdio.h>
-
-Error SemaphorePosix::wait() {
-
-	while (sem_wait(&sem)) {
-		if (errno == EINTR) {
-			errno = 0;
-			continue;
-		} else {
-			perror("sem waiting");
-			return ERR_BUSY;
-		}
-	}
-	return OK;
-}
-
-Error SemaphorePosix::post() {
-
-	return (sem_post(&sem) == 0) ? OK : ERR_BUSY;
-}
-int SemaphorePosix::get() const {
-
-	int val;
-	sem_getvalue(&sem, &val);
-
-	return val;
-}
-
-Semaphore *SemaphorePosix::create_semaphore_posix() {
-
-	return memnew(SemaphorePosix);
-}
-
-void SemaphorePosix::make_default() {
-
-	create_func = create_semaphore_posix;
-}
-
-SemaphorePosix::SemaphorePosix() {
-
-	int r = sem_init(&sem, 0, 0);
-	if (r != 0)
-		perror("sem creating");
-}
-
-SemaphorePosix::~SemaphorePosix() {
-
-	sem_destroy(&sem);
-}
-
-#endif
+void register_3ds_exporter();

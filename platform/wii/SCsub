@@ -1,0 +1,26 @@
+#!/usr/bin/env python
+
+Import('env')
+
+
+common_server = [
+    "os_wii.cpp",
+	# "audio_driver_psp.cpp",
+	"rasterizer_wii.cpp",
+	"mutex_wii.cpp",
+	"thread_wii.cpp"
+]
+
+prog = env.add_program('#bin/godot_wii', ['godot_wii.cpp'] + common_server)
+
+env.Command(
+ 	"#bin/godot_wii.dol", prog ,"elf2dol bin/godot_wii.wii.opt.32 bin/godot_wii.dol"
+)
+#
+# env.Command(
+# 	"#bin/strip.elf", "#bin/godot.elf" ,"psp-strip bin/godot.elf -o bin/strip.elf"
+# )
+#
+# env.Command(
+# 	"#bin/EBOOT.PBP", "#bin/strip.elf" ,"pack-pbp bin/EBOOT.PBP bin/PARAM.SFO NULL          NULL NULL NULL          NULL  bin/strip.elf NULL"
+# )

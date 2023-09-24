@@ -1,12 +1,11 @@
 /*************************************************************************/
-/*  semaphore_posix.cpp                                                  */
+/*  audio_driver_3ds.h                                                   */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
+/*                    http://www.godotengine.org                         */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2016 Juan Linietsky, Ariel Manzur.                 */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,61 +26,59 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+#ifndef AUDIO_DRIVER_PSP_H
+#define AUDIO_DRIVER_PSP_H
 
-#include "semaphore_posix.h"
+#include "servers/audio/audio_server_sw.h"
 
-#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED) && !defined(PSP_ENABLED) && !defined(__WII__)
+#include "core/os/thread.h"
+#include "core/os/mutex.h"
 
-#include "os/memory.h"
-#include <errno.h>
-#include <stdio.h>
+#include <pspaudio.h>
+#include <pspaudiolib.h>
+#include <pspthreadman.h>
+#include <pspkerneltypes.h>
 
-Error SemaphorePosix::wait() {
+class AudioDriverPSP : public AudioDriverSW {
 
-	while (sem_wait(&sem)) {
-		if (errno == EINTR) {
-			errno = 0;
-			continue;
-		} else {
-			perror("sem waiting");
-			return ERR_BUSY;
-		}
-	}
-	return OK;
-}
+	Thread *thread;
+	Mutex *mutex;
+	int32_t* samples_in;
+	int16_t* samples_out;
+	int id;
 
-Error SemaphorePosix::post() {
+	static void thread_func(void *p_udata);
 
-	return (sem_post(&sem) == 0) ? OK : ERR_BUSY;
-}
-int SemaphorePosix::get() const {
 
-	int val;
-	sem_getvalue(&sem, &val);
+	int buffer_size;
 
-	return val;
-}
+	unsigned int mix_rate;
+	OutputFormat output_format;
 
-Semaphore *SemaphorePosix::create_semaphore_posix() {
+	int channels;
 
-	return memnew(SemaphorePosix);
-}
+	bool active;
+	bool thread_exited;
+	bool exit_thread;
+	bool pcm_open;
 
-void SemaphorePosix::make_default() {
+public:
 
-	create_func = create_semaphore_posix;
-}
+	const char* get_name() const {
+		return "PSP Audio";
+	};
 
-SemaphorePosix::SemaphorePosix() {
+	virtual Error init();
+	virtual void start();
+	virtual int get_mix_rate() const;
+	virtual OutputFormat get_output_format() const;
 
-	int r = sem_init(&sem, 0, 0);
-	if (r != 0)
-		perror("sem creating");
-}
+	virtual void lock();
+	virtual void unlock();
+	virtual void finish();
 
-SemaphorePosix::~SemaphorePosix() {
-
-	sem_destroy(&sem);
-}
+	AudioDriverPSP();
+	~AudioDriverPSP();
+};
 
 #endif

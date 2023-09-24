@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  semaphore_posix.cpp                                                  */
+/*  mutex_posix.cpp                                                      */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,60 +28,47 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "semaphore_posix.h"
-
-#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED) && !defined(PSP_ENABLED) && !defined(__WII__)
-
+#include "mutex_wii.h"
 #include "os/memory.h"
-#include <errno.h>
-#include <stdio.h>
 
-Error SemaphorePosix::wait() {
+#if defined(__WII__)
 
-	while (sem_wait(&sem)) {
-		if (errno == EINTR) {
-			errno = 0;
-			continue;
-		} else {
-			perror("sem waiting");
-			return ERR_BUSY;
-		}
-	}
-	return OK;
+void MutexWii::lock() {
+
+	mutex.lock();
+}
+void MutexWii::unlock() {
+
+	mutex.unlock();
+}
+Error MutexWii::try_lock() {
+
+	return mutex.try_lock() ? OK : ERR_BUSY;
 }
 
-Error SemaphorePosix::post() {
+Mutex *MutexWii::create_func_wii(bool p_recursive) {
 
-	return (sem_post(&sem) == 0) ? OK : ERR_BUSY;
-}
-int SemaphorePosix::get() const {
-
-	int val;
-	sem_getvalue(&sem, &val);
-
-	return val;
+	return memnew(MutexWii(p_recursive));
 }
 
-Semaphore *SemaphorePosix::create_semaphore_posix() {
+void MutexWii::make_default() {
 
-	return memnew(SemaphorePosix);
+	create_func = create_func_wii;
 }
 
-void SemaphorePosix::make_default() {
+MutexWii::MutexWii(bool p_recursive) {
 
-	create_func = create_semaphore_posix;
+	// pthread_mutexattr_init(&attr);
+	// if (p_recursive)
+	// 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	// pthread_mutex_init(&mutex, &attr);
+	if(!p_recursive)
+		printf("non recursive thread!\n");
 }
 
-SemaphorePosix::SemaphorePosix() {
+MutexWii::~MutexWii() {
 
-	int r = sem_init(&sem, 0, 0);
-	if (r != 0)
-		perror("sem creating");
-}
-
-SemaphorePosix::~SemaphorePosix() {
-
-	sem_destroy(&sem);
+	// pthread_mutex_destroy(&mutex);
 }
 
 #endif

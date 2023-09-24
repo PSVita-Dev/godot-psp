@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  semaphore_posix.cpp                                                  */
+/*  godot_server.cpp                                                     */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,60 +28,55 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "semaphore_posix.h"
+// #define Thread Lib3dsThread
+// #include <3ds.h>
+// #include <GL/picaGL.h>
+// #undef Thread
 
-#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED) && !defined(PSP_ENABLED) && !defined(__WII__)
+// #include <whb/proc.h>
+// #include <whb/gfx.h>
 
-#include "os/memory.h"
-#include <errno.h>
-#include <stdio.h>
+#include "main/main.h"
 
-Error SemaphorePosix::wait() {
+// #include <whb/gfx.h>
+#include <gccore.h>
+#include <wiiuse/wpad.h>
 
-	while (sem_wait(&sem)) {
-		if (errno == EINTR) {
-			errno = 0;
-			continue;
-		} else {
-			perror("sem waiting");
-			return ERR_BUSY;
-		}
+#include "os_wii.h"
+
+int main(int argc, char *argv[]) {
+	// WHBProcInit();
+	// WHBGfxInit();
+    // ramfsInit();
+
+	VIDEO_Init();
+	WPAD_Init();
+
+	printf("Godot wii\n");
+	OS_WII os;
+	printf("Godot wii OS init\n");
+	char* args[] = {"-path", "."};
+	printf("setup\n");
+	// while(1) { };
+
+	Error err = Main::setup("wii", 2, args, true);
+    printf("setup\n");
+
+	// gx2glInit();
+	// glutInit(&argc, argv);
+
+	printf("glut UWU :3\n");
+
+	if (err==OK)
+	{
+		printf("Running...\n");
+
+		if (Main::start())
+	 		os.run(); // it is actually the OS that decides how to run
+	 	Main::cleanup();
 	}
-	return OK;
+	// gx2glCleanup();
+    // WHBProcShutdown();
+
+	return 0;
 }
-
-Error SemaphorePosix::post() {
-
-	return (sem_post(&sem) == 0) ? OK : ERR_BUSY;
-}
-int SemaphorePosix::get() const {
-
-	int val;
-	sem_getvalue(&sem, &val);
-
-	return val;
-}
-
-Semaphore *SemaphorePosix::create_semaphore_posix() {
-
-	return memnew(SemaphorePosix);
-}
-
-void SemaphorePosix::make_default() {
-
-	create_func = create_semaphore_posix;
-}
-
-SemaphorePosix::SemaphorePosix() {
-
-	int r = sem_init(&sem, 0, 0);
-	if (r != 0)
-		perror("sem creating");
-}
-
-SemaphorePosix::~SemaphorePosix() {
-
-	sem_destroy(&sem);
-}
-
-#endif

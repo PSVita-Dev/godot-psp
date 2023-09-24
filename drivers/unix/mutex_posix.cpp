@@ -31,7 +31,7 @@
 #include "mutex_posix.h"
 #include "os/memory.h"
 
-#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED) && !defined(__WIIU__)
+#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED) && !defined(__WII__)
 
 void MutexPosix::lock() {
 

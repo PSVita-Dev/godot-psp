@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  semaphore_posix.cpp                                                  */
+/*  thread_posix.h                                                       */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,60 +28,47 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "semaphore_posix.h"
+#ifndef THREAD_POSIX_H
+#define THREAD_WIIU_H
 
-#if defined(UNIX_ENABLED) || defined(PTHREAD_ENABLED) && !defined(PSP_ENABLED) && !defined(__WII__)
+/**
+	@author Juan Linietsky <reduzio@gmail.com>
+*/
 
-#include "os/memory.h"
-#include <errno.h>
-#include <stdio.h>
+#if !defined(__WII__)
 
-Error SemaphorePosix::wait() {
+#include "os/thread.h"
+#include <thread>
+#include <sys/types.h>
 
-	while (sem_wait(&sem)) {
-		if (errno == EINTR) {
-			errno = 0;
-			continue;
-		} else {
-			perror("sem waiting");
-			return ERR_BUSY;
-		}
-	}
-	return OK;
-}
+class ThreadWii : public Thread {
 
-Error SemaphorePosix::post() {
+	pthread_t pthread;
+	pthread_attr_t pthread_attr;
+	ThreadCreateCallback callback;
+	void *user;
+	ID id;
 
-	return (sem_post(&sem) == 0) ? OK : ERR_BUSY;
-}
-int SemaphorePosix::get() const {
+	static Thread *create_thread_posix();
 
-	int val;
-	sem_getvalue(&sem, &val);
+	static void *thread_callback(void *userdata);
 
-	return val;
-}
+	static Thread *create_func_posix(ThreadCreateCallback p_callback, void *, const Settings &);
+	static ID get_thread_ID_func_posix();
+	static void wait_to_finish_func_posix(Thread *p_thread);
 
-Semaphore *SemaphorePosix::create_semaphore_posix() {
+	static Error set_name_func_posix(const String &p_name);
 
-	return memnew(SemaphorePosix);
-}
+	ThreadWii();
 
-void SemaphorePosix::make_default() {
+public:
+	virtual ID get_ID() const;
 
-	create_func = create_semaphore_posix;
-}
+	static void make_default();
 
-SemaphorePosix::SemaphorePosix() {
+	~ThreadWii();
+};
 
-	int r = sem_init(&sem, 0, 0);
-	if (r != 0)
-		perror("sem creating");
-}
-
-SemaphorePosix::~SemaphorePosix() {
-
-	sem_destroy(&sem);
-}
+#endif
 
 #endif
