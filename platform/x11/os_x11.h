@@ -31,7 +31,7 @@
 #ifndef OS_X11_H
 #define OS_X11_H
 
-#include "context_gl_x11.h"
+#include "context_tgl.h"
 #include "crash_handler_x11.h"
 #include "drivers/alsa/audio_driver_alsa.h"
 #include "drivers/pulseaudio/audio_driver_pulseaudio.h"

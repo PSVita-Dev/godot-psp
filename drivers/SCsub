@@ -20,6 +20,7 @@ if (env["platform"] == "windows"):
 
 # Graphics drivers
 SConscript('gles2/SCsub')
+SConscript('gles1/SCsub')
 SConscript('gl_context/SCsub')
 
 # Core dependencies

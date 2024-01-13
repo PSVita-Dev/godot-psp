@@ -251,7 +251,7 @@ void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 //print_line("def videomode "+itos(current_videomode.width)+","+itos(current_videomode.height));
 #if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED)
 
-	context_gl = memnew(ContextGL_X11(x11_display, x11_window, current_videomode, false));
+	context_gl = memnew(ContextGL_X11(current_videomode, false));
 	context_gl->initialize();
 
 	rasterizer = memnew(RasterizerGLES2);

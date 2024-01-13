@@ -43,16 +43,29 @@
 
 #include "platform_config.h"
 #ifndef GLES1_INCLUDE_H
-#define GLdouble double
-#define GLuint unsigned int
-#define GLfloat float
-#define GLenum enum
-// #include <GLES/glut.h>
+// #define GLdouble double
+// #define GLuint unsigned int
+// #define GLfloat float
+// #define GLenum enum
+#include <GLES/gl.h>
 
 #include <gx2/texture.h>
 #include <gx2/draw.h>
+#include <gx2/swap.h>
+#include <gx2/event.h>
+#include <gx2/mem.h>
 #include <gx2/registers.h>
 #include <whb/gfx.h>
+#include <gx2r/draw.h>
+#include <gx2r/buffer.h>
+#include <gx2/utils.h>
+#include <coreinit/debug.h>
+#include <whb/proc.h>
+#include <coreinit/memdefaultheap.h>
+#include <malloc.h>
+#include <string>
+
+#include "CafeGLSLCompiler.h"
 #else
 #include GLES1_INCLUDE_H
 #endif
@@ -61,9 +74,155 @@
 
 #include "servers/visual/particle_system_sw.h"
 
+static WHBGfxShaderGroup group;
+static GX2Sampler sampler;
+
 /**
         @author Juan Linietsky <reduzio@gmail.com>
 */
+
+
+typedef struct
+{
+   float u;
+   float v;
+} tex_coord_t;
+
+typedef struct
+{
+   float x;
+   float y;
+} position_t;
+
+/*
+constexpr const char* s_textureVertexShader = R"(
+#version 450
+
+layout(binding = 0) uniform projection_matrix {
+float a;
+};
+
+layout(binding = 1) uniform modelview_matrix {
+float b;
+};
+
+layout(binding = 2) uniform extra_matrix {
+float c;
+};
+
+layout(location = 0) in vec3 vertex;
+layout(location = 1) in vec4 color_attrib;
+layout(location = 2) in vec2 uv_attrib;
+
+layout(location = 0) out vec2 uv_interp;
+layout(location = 1) out vec4 color_interp;
+
+void main() {
+	color_interp = color_attrib;
+	uv_interp = uv_attrib;
+	vec4 outvec = vec4(vertex, 1.0);
+
+// 	vec2 src_vtx=outvec.xy;
+
+	outvec = c * outvec;
+	outvec = b * outvec;
+
+	gl_Position = a * outvec;
+
+}
+)";
+
+
+
+constexpr const char* s_texturePixelShader = R"(
+#version 450
+#extension GL_ARB_shading_language_420pack: enable
+
+layout(location = 0) in vec2 uv_interp;
+layout(location = 1) in vec4 color_interp;
+
+layout(binding = 0) uniform sampler2D texture1;
+
+layout(location = 0) out vec4 FragColor;
+
+void main() {
+
+	vec4 color = color_interp;
+	color *= texture( texture1,  uv_interp );
+
+	FragColor = color;
+
+}
+)";
+*/
+
+constexpr const char* s_textureVertexShader = R"(
+#version 450
+
+layout(location = 0) in vec2 aPos;
+layout(location = 1) in vec2 aTexCoord;
+
+// layout(binding = 0) uniform projection_matrix {
+// mat4 ;
+// };
+layout(binding = 0) uniform uf_data {
+mat4 projectionMatrix;
+mat4 modelview_matrix;
+};
+/*
+layout(binding = 1) uniform uf_data1 {
+ mat4 modelview_matrix;
+ };*/
+
+/*
+const mat4 modelview_matrix = mat4(
+    0.441670, 0.824048, 0.0, 0.0,
+   -0.922721, 0.494556, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    749.661011, 288.544006, 0.0, 1.0
+);
+
+const mat4 projectionMatrix = mat4(
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+   -960.0, -540.0, 0.0, 1.0
+);
+
+*/
+// layout(binding = 2) uniform extra_matrix {
+// float c;
+// };
+
+layout(location = 0) out vec2 TexCoord;
+
+void main()
+{
+    TexCoord = aTexCoord;
+	vec4 outvec = vec4(aPos.x, aPos.y, 0.0f, 1.0f);
+	// outvec = c * outvec;
+	outvec = outvec * modelview_matrix;
+    gl_Position = outvec * projectionMatrix;
+}
+)";
+
+constexpr const char* s_texturePixelShader = R"(
+#version 450
+#extension GL_ARB_shading_language_420pack: enable
+
+layout(location = 0) in vec2 TexCoord;
+
+layout(location = 0) out vec4 FragColor;
+
+layout(binding = 0) uniform sampler2D frogTexture;
+
+void main()
+{
+    FragColor = texture(frogTexture, TexCoord);
+    //FragColor.x = mod(uf_time.x, 1.0f);
+}
+)";
+
 class RasterizerWIIU : public Rasterizer {
 
 	enum {
@@ -83,9 +242,17 @@ class RasterizerWIIU : public Rasterizer {
 	bool npo2_textures_available;
 	bool pack_arrays;
 	bool use_reload_hooks;
+	Transform canvas_transform;
+	alignas(0x100) __uint32_t projectionMTX[32] = { };
+	alignas(0x100) __uint32_t modelview_matrix[16] = { };
+
+	WHBGfxShaderGroup shaderGroup;
 
 	Image _get_gl_image_and_format(const Image& p_image, Image::Format p_format, uint32_t p_flags,GLenum& r_gl_format,int &r_gl_components,bool &r_has_alpha_cache,bool &r_compressed);
-
+	__uint32_t swapf(float v)
+	{
+		return __builtin_bswap32(*(__uint32_t*)&v);
+	}
 
 	struct Texture {
 
@@ -106,7 +273,7 @@ class RasterizerWIIU : public Rasterizer {
 		Image image[6];
 
 		bool active;
-		GLuint tex_id;
+		GX2Texture tex_id;
 
 		ObjectID reloader;
 		StringName reloader_func;
@@ -114,7 +281,7 @@ class RasterizerWIIU : public Rasterizer {
 		Texture() {
 
 			flags=width=height=0;
-			tex_id=0;
+			// tex_id=0;
 			data_size=0;
 			format=Image::FORMAT_GRAYSCALE;
 			gl_components_cache=0;
@@ -128,10 +295,10 @@ class RasterizerWIIU : public Rasterizer {
 
 		~Texture() {
 
-			if (tex_id!=0) {
+			// if (tex_id!=0) {
 
-				glDeleteTextures(1,&tex_id);
-			}
+				// glDeleteTextures(1,&tex_id);
+			// }
 		}
 	};
 
@@ -913,6 +1080,8 @@ struct LightInstance {
 		} blur[2];
 
 	} framebuffer;
+
+
 
 	void _update_framebuffer();
 	void _process_glow_and_bloom();

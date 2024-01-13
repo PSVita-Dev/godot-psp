@@ -85,6 +85,7 @@ def configure(env):
             env["CXX"] = "clang++"
             env["LD"] = "clang++"
         env.Append(CPPFLAGS=['-DTYPED_METHOD_BIND'])
+        env.Append(CXXFLAGS=['-std=c++11'])
         env.extra_suffix = ".llvm"
     elif (os.system("gcc --version > /dev/null 2>&1") == 0): # GCC
         # Hack to prevent building this branch with GCC 6+, which trigger segfaults due to UB when dereferencing pointers in Object::cast_to
@@ -227,7 +228,7 @@ def configure(env):
         env.ParseConfig('pkg-config zlib --cflags --libs')
 
     env.Append(CPPFLAGS=['-DX11_ENABLED', '-DUNIX_ENABLED', '-DGLES2_ENABLED', '-DGLES_OVER_GL'])
-    env.Append(LIBS=['GL', 'pthread'])
+    env.Append(LIBS=['SDL2','pthread'])
 
     if (platform.system() == "Linux"):
         env.Append(LIBS=['dl'])

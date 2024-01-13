@@ -6979,7 +6979,7 @@ void VisualServerRaster::set_time_scale(float p_scale) {
 
 	rasterizer->set_time_scale(p_scale);
 }
-
+#include <coreinit/debug.h>
 void VisualServerRaster::set_boot_image(const Image &p_image, const Color &p_color, bool p_scale) {
 
 	if (p_image.empty())
@@ -7024,6 +7024,7 @@ void VisualServerRaster::set_boot_image(const Image &p_image, const Color &p_col
 		screenrect = imgrect;
 		screenrect.pos += ((Size2(vr.width, vr.height) - screenrect.size) / 2.0).floor();
 	}
+	OSReport("%f %f %f %f\n", screenrect.pos.x, screenrect.pos.y, screenrect.size.x, screenrect.size.y);
 	rasterizer->canvas_draw_rect(screenrect, 0, imgrect, texture, Color(1, 1, 1, 1));
 	rasterizer->canvas_end_rect();
 

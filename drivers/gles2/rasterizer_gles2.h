@@ -48,7 +48,7 @@
 
 #include "platform_config.h"
 #ifndef GLES2_INCLUDE_H
-#include <GLES2/gl2.h>
+// #include <GLES2/gl2.h>
 #else
 #include GLES2_INCLUDE_H
 #endif

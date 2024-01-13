@@ -47,7 +47,6 @@
 #include "os/memory_pool_dynamic_static.h"
 
 #include "main/main.h"
-
 #include <unistd.h>
 #include <sys/time.h>
 
@@ -66,6 +65,7 @@ OS::VideoMode OS_WIIU::get_default_video_mode() const {
 
 	return OS::VideoMode(1920, 1080, false);
 }
+
 static MemoryPoolStaticMalloc *mempool_static=NULL;
 static MemoryPoolDynamicStatic *mempool_dynamic=NULL;
 
@@ -171,7 +171,7 @@ void OS_WIIU::initialize(const VideoMode &p_desired, int p_video_driver, int p_a
 
 
 
-	rasterizer = memnew(RasterizerDummy);
+	rasterizer = memnew(RasterizerWIIU);
 
 
 	visual_server = memnew(VisualServerRaster(rasterizer));
@@ -383,21 +383,20 @@ void OS_WIIU::run() {
 	main_loop->init();
 
 	while (WHBProcIsRunning()) {
-		WHBGfxBeginRender();
+
 		// process_keys();
 // 		visual_server->draw();
 
 		if (Main::iteration() == true)
 			break;
 
-		WHBGfxFinishRender();
 	};
 
 	main_loop->finish();
 }
 
 void OS_WIIU::swap_buffers() {
-	// pglSwapBuffers();
+
 }
 
 OS_WIIU::OS_WIIU() {

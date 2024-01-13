@@ -4,7 +4,7 @@ Import('env')
 
 
 common_x11 = [
-    "context_gl_x11.cpp",
+    "context_tgl.cpp",
     "crash_handler_x11.cpp",
     "os_x11.cpp",
     "key_mapping_x11.cpp",

@@ -39,40 +39,42 @@
 #include "main/main.h"
 
 #include <whb/gfx.h>
+#include <whb/log_console.h>
+#include <coreinit/debug.h>
+#include <whb/sdcard.h>
 
 #include "os_wiiu.h"
+#include "CafeGLSLCompiler.h"
 
 int main(int argc, char *argv[]) {
 	WHBProcInit();
 	WHBGfxInit();
-    ramfsInit();
+	WHBLogConsoleInit();
+	WHBMountSdCard();
+	GLSL_Init();
+    // ramfsInit();
 
-
-
-	printf("Godot wiiu\n");
+	OSReport("Godot wiiu\n");
 	OS_WIIU os;
-	printf("Godot wiiu OS init\n");
-	char* args[] = {"-path", "."};
-	printf("setup\n");
-	// while(1) { };
+
+	OSReport("Godot wiiu OS init\n");
+	char* args[] = {"-path", WHBGetSdCardMountPath()};
+	OSReport("setup\n");
 
 	Error err = Main::setup("wiiu", 2, args, true);
-    printf("setup\n");
+    OSReport("setup\n");
 
-	// gx2glInit();
-	glutInit(&argc, argv);
-
-	printf("glut UWU :3\n");
 
 	if (err==OK)
 	{
-		printf("Running...\n");
+		OSReport("Running...\n");
 
 		if (Main::start())
 	 		os.run(); // it is actually the OS that decides how to run
 	 	Main::cleanup();
 	}
-	// gx2glCleanup();
+	GLSL_Shutdown();
+	WHBLogConsoleFree();
     WHBProcShutdown();
 
 	return 0;
